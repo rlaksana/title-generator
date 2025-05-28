@@ -1,7 +1,7 @@
 {
   "id": "title-generator",
   "name": "Enhanced Title Generator",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "minAppVersion": "0.15.0",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "author": "Jascha Ephraim & Community",
