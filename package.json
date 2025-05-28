@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-title-generator",
-  "version": "1.0.3",
-  "description": "Quickly and easily title your Obsidian notes using OpenAI's GPT-3.5",
+  "name": "obsidian-enhanced-title-generator",
+  "version": "2.0.0",
+  "description": "Generate titles using multiple AI providers with smart filename handling",
   "main": "main.js",
   "engines": {
     "node": "18"
@@ -15,12 +15,7 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
-  "keywords": [
-    "obsidian",
-    "plugin",
-    "openai",
-    "gpt"
-  ],
+  "keywords": ["obsidian", "plugin", "ai", "title", "openai", "anthropic", "gemini", "ollama"],
   "author": {
     "name": "Jascha Ephraim",
     "email": "jaschaephraim@gmail.com",
