@@ -85,7 +85,6 @@ export default class TitleGeneratorPlugin extends Plugin {
       });
     }
   }
-}
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
     const activeFile = this.app.workspace.getActiveFile();
