@@ -8,7 +8,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 - **Intelligent Title Refinement**: If an AI-generated title is too long, the plugin asks the AI to shorten it, preserving the core meaning instead of just cutting it off.
 - **Cost-Efficient Analysis**: Limit the amount of text sent to the AI (e.g., the first 2000 characters) to significantly reduce token usage and cost on long notes.
-- **Multi-Provider AI**: Choose from OpenAI, Anthropic, Google Gemini, or a local Ollama instance.
+- **Multi-Provider AI**: Choose from OpenAI, Anthropic, Google Gemini, local Ollama, or LM Studio.
 - **Mobile-First Design**: All API calls use Obsidian's native `fetch` API, ensuring 100% compatibility on mobile devices and removing heavy dependencies.
 - **Fully Customizable Prompts**: Tailor the initial prompt and the refinement prompt to fit your exact needs.
 - **Smart Filename Sanitization**: Automatically removes OS-forbidden characters and normalizes whitespace to create safe, clean filenames.
@@ -35,7 +35,7 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 
 | Setting                      | Description                                                                                             | Default                                                                                                |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **AI Provider**              | Select your preferred AI service (OpenAI, Anthropic, Google Gemini, Ollama).                            | `OpenAI`                                                                                               |
+| **AI Provider**              | Select your preferred AI service (OpenAI, Anthropic, Google Gemini, Ollama, LM Studio).                            | `Ollama`                                                                                               |
 | **API Key / Server URL**     | Your API key for the selected cloud service, or the URL for your local Ollama instance.                 | (empty) / `http://localhost:11434`                                                                     |
 | **Model**                    | The specific AI model to use for generation.                                                            | `gpt-4o-mini`                                                                                          |
 | **Initial Prompt**           | The prompt template for the first request. Use `{max_length}` as a placeholder.                         | `Generate a concise, descriptive title for the following text. The title must be a maximum of {max_length} characters.` |
@@ -52,11 +52,13 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 -   **Anthropic**: `claude-3-haiku-20240307`
 -   **Google Gemini**: `gemini-1.5-flash-latest`
 -   **Ollama**: `llama3`
+-   **LM Studio**: `llama-3`
 
 ## Troubleshooting
 
 -   **Invalid API Key**: Double-check your API key in your provider's dashboard.
--   **Network Errors**: For cloud providers, ensure you have an internet connection. For Ollama, verify your local server is running and accessible at the configured URL.
+-   **Network Errors**: For cloud providers, ensure you have an internet connection. For local providers (Ollama/LM Studio), verify your server is running and accessible at the configured URL.
+-   **LM Studio Connection**: Make sure LM Studio is running with "Start Server" enabled and the model is loaded. Default URL is `http://127.0.0.1:1234`.
 -   **No Title Generated**: Check the Obsidian developer console (`Ctrl/Cmd + Shift + I`) for any error messages from the plugin.
 
 ## License

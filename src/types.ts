@@ -3,7 +3,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio';
 
 /**
  * Defines the structure for AI provider details, including their name,
@@ -25,12 +25,14 @@ export interface TitleGeneratorSettings {
   anthropicApiKey: string;
   googleApiKey: string;
   ollamaUrl: string;
+  lmstudioUrl: string;
 
   // Model Settings
   openAiModel: string;
   anthropicModel: string;
   googleModel: string;
   ollamaModel: string;
+  lmstudioModel: string;
 
   // Title Settings
   lowerCaseTitles: boolean;

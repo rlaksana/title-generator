@@ -96,6 +96,12 @@ export class AIService {
           return false;
         }
         break;
+      case 'lmstudio':
+        if (!settings.lmstudioUrl.trim()) {
+          new Notice('LM Studio server URL is not set. Please configure it in plugin settings.', 6000);
+          return false;
+        }
+        break;
       default:
         new Notice('Invalid AI provider selected. Please check plugin settings.', 5000);
         return false;
@@ -116,6 +122,8 @@ export class AIService {
         return this.callGoogle(fullPrompt);
       case 'ollama':
         return this.callOllama(fullPrompt);
+      case 'lmstudio':
+        return this.callLMStudio(fullPrompt);
       default:
         throw new Error('Unsupported AI provider selected.');
     }
@@ -225,5 +233,28 @@ export class AIService {
     }
     const data = await response.json();
     return data.response?.trim() ?? '';
+  }
+
+  private async callLMStudio(prompt: string): Promise<string> {
+    const settings = this.getSettings();
+    const url = new URL('/v1/chat/completions', settings.lmstudioUrl).toString();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: settings.lmstudioModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: settings.temperature,
+        max_tokens: settings.maxTitleLength + 50,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`LM Studio API error (${response.status}): ${errorBody}`);
+    }
+    const data = await response.json();
+    return data.choices[0]?.message?.content?.trim() ?? '';
   }
 }

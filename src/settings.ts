@@ -26,6 +26,11 @@ export const AI_PROVIDERS: Record<
     models: ['llama3', 'llama2', 'mistral', 'codellama', 'phi3'],
     requiresApiKey: false,
   },
+  lmstudio: {
+    name: 'LM Studio',
+    models: ['llama-3', 'mistral-7b', 'codellama', 'phi-3', 'qwen2', 'gemma2'],
+    requiresApiKey: false,
+  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
@@ -35,12 +40,14 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   anthropicApiKey: '',
   googleApiKey: '',
   ollamaUrl: 'http://localhost:11434',
+  lmstudioUrl: 'http://127.0.0.1:1234',
 
   // Models
   openAiModel: 'gpt-4o-mini',
   anthropicModel: 'claude-3-haiku-20240307',
   googleModel: 'gemini-1.5-flash-latest',
   ollamaModel: 'llama3',
+  lmstudioModel: 'llama-3',
 
   // Title
   lowerCaseTitles: false,
@@ -219,19 +226,34 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             });
         });
     } else {
-      // Ollama specific setting
-      new Setting(containerEl)
-        .setName('Ollama Server URL')
-        .setDesc('The URL of your local Ollama server.')
-        .addText((text) => {
-          text
-            .setPlaceholder('e.g., http://localhost:11434')
-            .setValue(this.plugin.settings.ollamaUrl)
-            .onChange(async (value) => {
-              this.plugin.settings.ollamaUrl = value;
-              await this.plugin.saveSettings();
-            });
-        });
+      // Ollama and LM Studio specific settings
+      if (provider === 'ollama') {
+        new Setting(containerEl)
+          .setName('Ollama Server URL')
+          .setDesc('The URL of your local Ollama server.')
+          .addText((text) => {
+            text
+              .setPlaceholder('e.g., http://localhost:11434')
+              .setValue(this.plugin.settings.ollamaUrl)
+              .onChange(async (value) => {
+                this.plugin.settings.ollamaUrl = value;
+                await this.plugin.saveSettings();
+              });
+          });
+      } else if (provider === 'lmstudio') {
+        new Setting(containerEl)
+          .setName('LM Studio Server URL')
+          .setDesc('The URL of your local LM Studio server.')
+          .addText((text) => {
+            text
+              .setPlaceholder('e.g., http://127.0.0.1:1234')
+              .setValue(this.plugin.settings.lmstudioUrl)
+              .onChange(async (value) => {
+                this.plugin.settings.lmstudioUrl = value;
+                await this.plugin.saveSettings();
+              });
+          });
+      }
     }
 
     // Model selection
