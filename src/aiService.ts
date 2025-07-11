@@ -350,39 +350,58 @@ export class AIService {
   private cleanAIResponse(response: string): string {
     if (!response) return '';
 
-    let cleaned = response.trim();
+    let text = response.trim();
 
-    // Recursively remove thinking blocks and re-clean the content inside them
-    const thinkMatch = cleaned.match(/<think>([\s\S]*?)<\/think>/);
+    // Pass 1: Content Extraction - Focus on the most relevant part.
+    // If there's a <think> block, assume the real content is inside.
+    const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
     if (thinkMatch && thinkMatch[1]) {
-      const innerContent = thinkMatch[1].trim();
-      const cleanedInner = this.cleanAIResponse(innerContent); // Recursive call
-      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, cleanedInner).trim();
+      text = thinkMatch[1].trim();
     }
 
-    // Remove common prefixes
-    cleaned = cleaned.replace(
+    // Pass 2: Candidate Extraction - Find the most likely title.
+    let bestCandidate = '';
+
+    // Best case: find text in quotes.
+    const quoteMatch = text.match(/["']([^"]{5,})["']/);
+    if (quoteMatch && quoteMatch[1]) {
+      bestCandidate = quoteMatch[1];
+    } else {
+      // Second best: find the first line that isn't a conversational prefix.
+      const lines = text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      for (const line of lines) {
+        if (
+          !/^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Let me think|I need to|Okay,|The user wants|Looking at|Based on|Here's|This|A good title|I'll|I would|Sure,)/i.test(
+            line
+          )
+        ) {
+          bestCandidate = line;
+          break; // Found a good candidate, stop searching.
+        }
+      }
+
+      // Fallback: if no good candidate was found, just use the first line.
+      if (!bestCandidate && lines.length > 0) {
+        bestCandidate = lines[0];
+      }
+    }
+
+    // Pass 3: Final Polish
+    // Remove any remaining common prefixes from the chosen candidate.
+    bestCandidate = bestCandidate.replace(
       /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:)\s*/i,
       ''
     );
+    // Remove any parenthetical explanations.
+    bestCandidate = bestCandidate.replace(/\([^)]*\)/g, '');
+    bestCandidate = bestCandidate.replace(/\[[^\]]*\]/g, '');
+    // Remove any remaining quotes.
+    bestCandidate = bestCandidate.replace(/["']/g, '');
 
-    // Remove explanations in parentheses or brackets
-    cleaned = cleaned.replace(/\([^)]*\)/g, '');
-    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
-
-    // Remove trailing fragments like dashes and incomplete words
-    cleaned = cleaned.replace(/[-\s]*$/g, '');
-    cleaned = cleaned.replace(/^[-\s]*/g, '');
-
-    // Take only the first line (in case there are multiple lines)
-    cleaned = cleaned.split('\n')[0];
-
-    // Remove quotes
-    cleaned = cleaned.replace(/["']/g, '');
-
-    // Remove extra whitespace
-    cleaned = cleaned.trim();
-
-    return cleaned;
+    return bestCandidate.trim();
   }
 }
