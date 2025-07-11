@@ -264,7 +264,7 @@ export class AIService {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: settings.temperature,
-          maxOutputTokens: 256, // Increased from maxTitleLength + 50
+          maxOutputTokens: 512, // Significantly increased
         },
       }),
     });
@@ -276,7 +276,6 @@ export class AIService {
     }
     const data = response.json;
 
-    // Add robust checking for the response structure
     if (
       !data.candidates ||
       !data.candidates[0] ||
@@ -287,8 +286,7 @@ export class AIService {
       return '';
     }
 
-    const result = data.candidates[0].content.parts[0].text.trim() ?? '';
-    return result;
+    return data.candidates[0].content.parts[0].text.trim() ?? '';
   }
 
   private async callOllama(prompt: string): Promise<string> {
@@ -350,58 +348,50 @@ export class AIService {
   private cleanAIResponse(response: string): string {
     if (!response) return '';
 
-    let text = response.trim();
+    let textToClean = response.trim();
 
-    // Pass 1: Content Extraction - Focus on the most relevant part.
-    // If there's a <think> block, assume the real content is inside.
-    const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
+    // If the entire response is wrapped in a <think> block,
+    // extract the content from within the block to be cleaned.
+    const thinkMatch = textToClean.match(/^<think>([\s\S]*)<\/think>$/);
     if (thinkMatch && thinkMatch[1]) {
-      text = thinkMatch[1].trim();
+      textToClean = thinkMatch[1].trim();
     }
 
-    // Pass 2: Candidate Extraction - Find the most likely title.
+    // Remove any remaining thinking blocks.
+    textToClean = textToClean.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    // Find the most likely candidate for the title.
+    // The best candidate is usually on its own line.
+    const lines = textToClean
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
     let bestCandidate = '';
-
-    // Best case: find text in quotes.
-    const quoteMatch = text.match(/["']([^"]{5,})["']/);
-    if (quoteMatch && quoteMatch[1]) {
-      bestCandidate = quoteMatch[1];
-    } else {
-      // Second best: find the first line that isn't a conversational prefix.
-      const lines = text
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
-
-      for (const line of lines) {
-        if (
-          !/^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Let me think|I need to|Okay,|The user wants|Looking at|Based on|Here's|This|A good title|I'll|I would|Sure,)/i.test(
-            line
-          )
-        ) {
-          bestCandidate = line;
-          break; // Found a good candidate, stop searching.
-        }
-      }
-
-      // Fallback: if no good candidate was found, just use the first line.
-      if (!bestCandidate && lines.length > 0) {
-        bestCandidate = lines[0];
+    for (const line of lines) {
+      // The best line is one that doesn't have conversational filler.
+      if (
+        !/^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Sure, here|I'll|I would|Based on)/i.test(
+          line
+        )
+      ) {
+        bestCandidate = line;
+        break;
       }
     }
 
-    // Pass 3: Final Polish
-    // Remove any remaining common prefixes from the chosen candidate.
-    bestCandidate = bestCandidate.replace(
+    // If no good candidate was found, fall back to the first line.
+    if (!bestCandidate && lines.length > 0) {
+      bestCandidate = lines[0];
+    }
+
+    // Final polish: remove common prefixes and quotes.
+    let finalTitle = bestCandidate.replace(
       /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:)\s*/i,
       ''
     );
-    // Remove any parenthetical explanations.
-    bestCandidate = bestCandidate.replace(/\([^)]*\)/g, '');
-    bestCandidate = bestCandidate.replace(/\[[^\]]*\]/g, '');
-    // Remove any remaining quotes.
-    bestCandidate = bestCandidate.replace(/["']/g, '');
+    finalTitle = finalTitle.replace(/["']/g, '');
 
-    return bestCandidate.trim();
+    return finalTitle.trim();
   }
 }
