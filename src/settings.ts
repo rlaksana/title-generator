@@ -439,12 +439,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     config?: Partial<TitleGeneratorSettings>
   ): Promise<void> {
     try {
-      // Small delay to ensure UI is updated
-      setTimeout(async () => {
-        await this.modelService.refreshModels(provider, config);
-        // Re-render the settings to update the dropdown
-        this.display();
-      }, 100);
+      await this.modelService.refreshModels(provider, config);
+      // Re-render the settings to update the dropdown
+      this.display();
     } catch (error) {
       console.error(`Failed to auto-reload models for ${provider}:`, error);
     }

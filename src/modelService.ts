@@ -91,8 +91,12 @@ export class ModelService {
     provider: AIProvider,
     config?: Partial<TitleGeneratorSettings>
   ): Promise<string[]> {
+    console.log('queryModels received config:', JSON.stringify(config));
     // Use provided config first, then fall back to stored settings
     const settings = { ...this.getSettings(), ...config };
+    console.log(
+      `Final settings for provider ${provider}. API Key present: ${!!settings.openAiApiKey}`
+    );
 
     switch (provider) {
       case 'openai':
