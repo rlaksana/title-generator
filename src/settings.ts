@@ -267,10 +267,10 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       } else if (provider === 'lmstudio') {
         new Setting(containerEl)
           .setName('LM Studio Server URL')
-          .setDesc('The URL of your local LM Studio server.')
+          .setDesc('The URL of your local LM Studio server. Try: http://127.0.0.1:1234, http://192.168.68.145:1234, or your local IP.')
           .addText((text) => {
             text
-              .setPlaceholder('e.g., http://127.0.0.1:1234')
+              .setPlaceholder('e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234')
               .setValue(this.plugin.settings.lmstudioUrl)
               .onChange(async (value) => {
                 const oldValue = this.plugin.settings.lmstudioUrl;

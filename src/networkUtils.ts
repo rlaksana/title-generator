@@ -8,10 +8,11 @@
 export async function findWorkingLMStudioUrl(baseUrl: string): Promise<string> {
   const urls = generateLMStudioUrls(baseUrl);
   
-  for (const url of urls) {
+  // Try URLs in parallel with Promise.race for faster detection
+  const promises = urls.map(async (url) => {
     try {
       const response = await fetch(new URL('/v1/models', url).toString(), {
-        signal: AbortSignal.timeout(2000), // Quick timeout for testing
+        signal: AbortSignal.timeout(3000), // 3 second timeout for testing
       });
       
       if (response.ok) {
@@ -19,6 +20,19 @@ export async function findWorkingLMStudioUrl(baseUrl: string): Promise<string> {
       }
     } catch (error) {
       // Continue to next URL
+    }
+    return null;
+  });
+  
+  // Wait for first successful connection
+  for (const promise of promises) {
+    try {
+      const result = await promise;
+      if (result) {
+        return result;
+      }
+    } catch (error) {
+      // Continue to next promise
     }
   }
   
@@ -40,13 +54,19 @@ function generateLMStudioUrls(baseUrl: string): string[] {
   urls.push(`http://127.0.0.1:${port}`);
   urls.push(`http://0.0.0.0:${port}`);
   
-  // For WSL users, try Windows host IP
+  // For WSL users, try Windows host IP and common network ranges
   if (isWSL()) {
-    const hostIp = getWindowsHostIp();
-    if (hostIp) {
-      urls.push(`http://${hostIp}:${port}`);
-    }
+    const hostIps = getWindowsHostIps();
+    hostIps.forEach(ip => {
+      urls.push(`http://${ip}:${port}`);
+    });
   }
+  
+  // Add common network IP ranges for local networks
+  const networkIps = getCommonNetworkIps();
+  networkIps.forEach(ip => {
+    urls.push(`http://${ip}:${port}`);
+  });
   
   // Remove duplicates
   return [...new Set(urls)];
@@ -87,16 +107,34 @@ function isWSL(): boolean {
 }
 
 /**
- * Get Windows host IP from WSL
+ * Get Windows host IPs from WSL
  */
-function getWindowsHostIp(): string | null {
+function getWindowsHostIps(): string[] {
   try {
-    // This would need to be implemented with a system call
-    // For now, return common WSL host IPs
-    return '172.20.10.1'; // Common WSL2 host IP
+    // Common WSL host IPs
+    return [
+      '172.20.10.1',   // Common WSL2 host IP
+      '172.16.0.1',    // Alternative WSL2 host IP
+      '10.0.0.1',      // Alternative host IP
+      '192.168.1.1',   // Common router IP
+    ];
   } catch {
-    return null;
+    return [];
   }
+}
+
+/**
+ * Get common network IP addresses to try
+ */
+function getCommonNetworkIps(): string[] {
+  // Common private network ranges
+  return [
+    '192.168.1.1',     // Common router
+    '192.168.0.1',     // Alternative router
+    '192.168.68.145',  // Specific IP that was working
+    '10.0.0.1',        // Common private range
+    '172.16.0.1',      // Docker/WSL range
+  ];
 }
 
 /**
