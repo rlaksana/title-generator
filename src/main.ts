@@ -60,28 +60,27 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async saveSettings() {
-    // 1. Create a deep copy of the settings object that we intend to save.
-    const settingsToSave = JSON.parse(JSON.stringify(this.settings));
+    // 1. Save the current settings.
+    await this.saveData(this.settings);
 
-    // 2. Save the data.
-    await this.saveData(settingsToSave);
+    // 2. Immediately load the data back from disk.
+    const loadedData = await this.loadData();
 
-    // 3. Immediately load the data back from the disk.
-    const loadedSettings = Object.assign(
-      {},
-      DEFAULT_SETTINGS,
-      await this.loadData()
-    );
-
-    // 4. Compare the saved data with the loaded data.
-    if (JSON.stringify(settingsToSave) !== JSON.stringify(loadedSettings)) {
+    // 3. Verify that the saved setting matches the value in memory.
+    // We focus on openAiModel as it's the primary issue.
+    if (
+      loadedData &&
+      this.settings.openAiModel !== loadedData.openAiModel
+    ) {
       new Notice(
-        'Error: Settings failed to save correctly. Please try again.',
-        7000
+        'Critical Error: Settings failed to save to disk. Please report this issue on GitHub.',
+        15000
       );
-      console.error('Settings Save/Load Mismatch:', {
-        saved: settingsToSave,
-        loaded: loadedSettings,
+      console.error('SETTINGS SAVE FAILURE:', {
+        inMemory: this.settings.openAiModel,
+        onDisk: loadedData.openAiModel,
+        fullSettings: this.settings,
+        fullLoadedData: loadedData,
       });
     }
   }
