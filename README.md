@@ -23,7 +23,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 Alternatively, for manual installation:
 1.  Download the `main.js` and `manifest.json` files from the latest [GitHub Release](https://github.com/rlaksana/obsidian-title-generator/releases).
-2.  Place these files in your vault’s `.obsidian/plugins/obsidian-enhanced-title-generator/` directory.
+2.  Place these files in your vault's `.obsidian/plugins/enhanced-title-generator/` directory.
 3.  Reload Obsidian and enable the plugin.
 
 ## Usage
@@ -102,4 +102,4 @@ The plugin now automatically detects and loads available models from your config
 
 ## License
 
-MIT © Enhanced Title Generator Contributors
+MIT © Richard Laksana
