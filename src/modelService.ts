@@ -147,7 +147,6 @@ export class ModelService {
         headers: {
           'x-api-key': settings.anthropicApiKey,
           'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
