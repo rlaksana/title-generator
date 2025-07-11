@@ -17,38 +17,13 @@ export class ModelService {
   }
 
   /**
-   * Get models for a provider, using cache if available or querying API
+   * Get models for a provider from the cache.
+   * This function does NOT query the API.
    */
   async getModels(provider: AIProvider): Promise<string[]> {
     const settings = this.getSettings();
     const cached = settings.cachedModels[provider];
-
-    // Check if we have fresh cached data (less than 1 hour old)
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    if (cached && cached.lastUpdated > oneHourAgo && cached.models.length > 0) {
-      return cached.models;
-    }
-
-    // Try to query fresh models
-    try {
-      const models = await this.queryModels(provider);
-      if (models.length > 0) {
-        await this.cacheModels(provider, models);
-        return models;
-      }
-    } catch (error) {
-      console.warn(`Failed to query models for ${provider}:`, error);
-      const errorMessage = this.getErrorMessage(error);
-      await this.cacheError(provider, errorMessage);
-    }
-
-    // Fallback to cached models if available
-    if (cached && cached.models.length > 0) {
-      return cached.models;
-    }
-
-    // Final fallback to empty array
-    return [];
+    return cached?.models || [];
   }
 
   /**

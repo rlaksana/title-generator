@@ -451,14 +451,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     try {
       // Check if provider has valid configuration
       if (this.hasValidConfiguration(provider)) {
-        // Load models in background
-        setTimeout(async () => {
-          await this.modelService.getModels(provider);
-          // Re-render to update dropdown if still on same provider
-          if (this.plugin.settings.aiProvider === provider) {
-            this.display();
-          }
-        }, 100);
+        // Load models in background and re-render
+        await this.modelService.refreshModels(provider);
+        if (this.plugin.settings.aiProvider === provider) {
+          this.display();
+        }
       }
     } catch (error) {
       console.error(`Failed to auto-load models for ${provider}:`, error);
