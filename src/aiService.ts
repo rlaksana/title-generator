@@ -18,6 +18,12 @@ export class AIService {
 
   public async generateTitle(noteContent: string): Promise<string> {
     const settings = this.getSettings();
+    
+    // Validate configuration before proceeding
+    if (!this.isConfigurationValid(settings)) {
+      return '';
+    }
+    
     const content = noteContent.slice(0, settings.maxContentLength);
     const initialPrompt = settings.customPrompt.replace(
       '{max_length}',
@@ -50,9 +56,51 @@ export class AIService {
 
     } catch (error) {
       console.error('Title Generation Error:', error);
-      new Notice(`AI Error: ${error.message}`);
+      
+      // Provide more helpful error messages
+      if (error.message.includes('API key is not set')) {
+        new Notice(`Please set your ${settings.aiProvider.toUpperCase()} API key in plugin settings, or switch to Ollama for local generation.`, 8000);
+      } else if (error.message.includes('API error')) {
+        new Notice(`AI service error: ${error.message}. Check your API key and internet connection.`, 6000);
+      } else {
+        new Notice(`Title generation failed: ${error.message}`, 5000);
+      }
+      
       return ''; // Return empty string on error
     }
+  }
+
+  private isConfigurationValid(settings: TitleGeneratorSettings): boolean {
+    switch (settings.aiProvider) {
+      case 'openai':
+        if (!settings.openAiApiKey.trim()) {
+          new Notice('OpenAI API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.', 8000);
+          return false;
+        }
+        break;
+      case 'anthropic':
+        if (!settings.anthropicApiKey.trim()) {
+          new Notice('Anthropic API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.', 8000);
+          return false;
+        }
+        break;
+      case 'google':
+        if (!settings.googleApiKey.trim()) {
+          new Notice('Google Gemini API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.', 8000);
+          return false;
+        }
+        break;
+      case 'ollama':
+        if (!settings.ollamaUrl.trim()) {
+          new Notice('Ollama server URL is not set. Please configure it in plugin settings.', 6000);
+          return false;
+        }
+        break;
+      default:
+        new Notice('Invalid AI provider selected. Please check plugin settings.', 5000);
+        return false;
+    }
+    return true;
   }
 
   private async callAI(prompt: string, content: string): Promise<string> {
