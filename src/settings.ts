@@ -54,10 +54,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   removeForbiddenChars: true,
 
   // Prompt and Content
-  customPrompt: 'Generate a concise, descriptive title for the following text. The title must be a maximum of {max_length} characters.',
-  refinePrompt: 'The following title is too long. Please shorten it to be under {max_length} characters, while preserving its core meaning: "{title}"',
-  temperature: 0.7,
-  maxTitleLength: 200,
+  customPrompt: 'Generate a short, descriptive title for the following text. Output ONLY the title, nothing else. Maximum {max_length} characters.',
+  refinePrompt: 'Shorten this title to under {max_length} characters, keep the core meaning: "{title}". Output ONLY the shortened title.',
+  temperature: 0.3,
+  maxTitleLength: 60,
   maxContentLength: 2000,
 };
 

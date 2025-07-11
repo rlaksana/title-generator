@@ -33,6 +33,9 @@ export class AIService {
     try {
       let title = await this.callAI(initialPrompt, content);
 
+      // Clean up AI response - remove thinking process, explanations, etc.
+      title = this.cleanAIResponse(title);
+
       if (title.length > settings.maxTitleLength) {
         new Notice('Initial title was too long. Refining...');
         const refinePrompt = settings.refinePrompt
@@ -40,6 +43,7 @@ export class AIService {
           .replace('{title}', title);
         
         title = await this.callAI(refinePrompt, ''); // No additional content needed
+        title = this.cleanAIResponse(title);
       }
 
       // Final processing
@@ -256,5 +260,51 @@ export class AIService {
     }
     const data = await response.json();
     return data.choices[0]?.message?.content?.trim() ?? '';
+  }
+
+  /**
+   * Clean up AI response to extract just the title
+   */
+  private cleanAIResponse(response: string): string {
+    if (!response) return '';
+    
+    // Remove common AI thinking patterns
+    let cleaned = response.trim();
+    
+    // Remove thinking process markers
+    cleaned = cleaned.replace(/^(Let me think|I need to|Okay,|The user wants|Looking at|Based on).*$/gm, '');
+    
+    // Remove explanations in parentheses or brackets
+    cleaned = cleaned.replace(/\([^)]*\)/g, '');
+    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
+    
+    // Remove quotes around the title
+    cleaned = cleaned.replace(/^["']|["']$/g, '');
+    
+    // Remove "Title:" prefix if present
+    cleaned = cleaned.replace(/^(Title:|Generated title:|Suggested title:)\s*/i, '');
+    
+    // Take only the first line (in case there are multiple lines)
+    cleaned = cleaned.split('\n')[0];
+    
+    // Remove extra whitespace
+    cleaned = cleaned.trim();
+    
+    // If still too long or contains thinking words, try to extract a clean title
+    if (cleaned.length > 100 || /\b(think|consider|analyze|create|generate)\b/i.test(cleaned)) {
+      // Look for quoted text first
+      const quotedMatch = response.match(/["']([^"']+)["']/);
+      if (quotedMatch) {
+        cleaned = quotedMatch[1];
+      } else {
+        // Try to find the actual title by looking for capitalized words
+        const titleMatch = response.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/);
+        if (titleMatch) {
+          cleaned = titleMatch[0];
+        }
+      }
+    }
+    
+    return cleaned.trim();
   }
 }
