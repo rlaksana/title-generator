@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 import type { AIProvider, TitleGeneratorSettings, CachedModels } from './types';
 
 /**
@@ -66,12 +66,8 @@ export class ModelService {
     provider: AIProvider,
     config?: Partial<TitleGeneratorSettings>
   ): Promise<string[]> {
-    console.log('queryModels received config:', JSON.stringify(config));
     // Use provided config first, then fall back to stored settings
     const settings = { ...this.getSettings(), ...config };
-    console.log(
-      `Final settings for provider ${provider}. API Key present: ${!!settings.openAiApiKey}`
-    );
 
     switch (provider) {
       case 'openai':
@@ -92,47 +88,34 @@ export class ModelService {
   private async queryOpenAIModels(
     settings: TitleGeneratorSettings
   ): Promise<string[]> {
-    const apiKey = settings.openAiApiKey;
-    console.log(
-      `Querying OpenAI models. API Key present: ${!!apiKey}. Key starts with: ${apiKey.slice(0, 5)}...`
-    );
-
-    if (!apiKey.trim()) {
+    if (!settings.openAiApiKey.trim()) {
       throw new Error('OpenAI API key not set');
     }
 
-    try {
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
+    const response = await requestUrl({
+      url: 'https://api.openai.com/v1/models',
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${settings.openAiApiKey}`,
+      },
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.data || !Array.isArray(data.data)) {
-        throw new Error('Invalid response format from OpenAI API');
-      }
-
-      return data.data
-        .filter((model: any) => model.id && model.id.includes('gpt'))
-        .map((model: any) => model.id)
-        .sort();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error(
-          'Request timed out. Please check your internet connection.'
-        );
-      }
-      throw error;
+    if (response.status !== 200) {
+      throw new Error(
+        `OpenAI API error (${response.status}): ${response.text}`
+      );
     }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from OpenAI API');
+    }
+
+    return data.data
+      .filter((model: any) => model.id && model.id.includes('gpt'))
+      .map((model: any) => model.id)
+      .sort();
   }
 
   private async queryAnthropicModels(
@@ -142,39 +125,30 @@ export class ModelService {
       throw new Error('Anthropic API key not set');
     }
 
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/models', {
-        headers: {
-          'x-api-key': settings.anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
+    const response = await requestUrl({
+      url: 'https://api.anthropic.com/v1/models',
+      method: 'GET',
+      headers: {
+        'x-api-key': settings.anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Anthropic API error (${response.status}): ${errorText}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!data.data || !Array.isArray(data.data)) {
-        throw new Error('Invalid response format from Anthropic API');
-      }
-
-      return data.data
-        .map((model: any) => model.id)
-        .sort();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error(
-          'Request timed out. Please check your internet connection.'
-        );
-      }
-      throw error;
+    if (response.status !== 200) {
+      throw new Error(
+        `Anthropic API error (${response.status}): ${response.text}`
+      );
     }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from Anthropic API');
+    }
+
+    return data.data
+      .map((model: any) => model.id)
+      .sort();
   }
 
   private async queryGoogleModels(
@@ -184,39 +158,29 @@ export class ModelService {
       throw new Error('Google API key not set');
     }
 
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${settings.googleApiKey}`,
-        {
-          signal: AbortSignal.timeout(10000), // 10 second timeout
-        }
+    const response = await requestUrl({
+      url: `https://generativelanguage.googleapis.com/v1beta/models?key=${settings.googleApiKey}`,
+      method: 'GET',
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Google API error (${response.status}): ${response.text}`
       );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Google API error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.models || !Array.isArray(data.models)) {
-        throw new Error('Invalid response format from Google API');
-      }
-
-      return data.models
-        .filter((model: any) =>
-          model.supportedGenerationMethods?.includes('generateContent')
-        )
-        .map((model: any) => model.name.replace('models/', ''))
-        .sort();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error(
-          'Request timed out. Please check your internet connection.'
-        );
-      }
-      throw error;
     }
+
+    const data = response.json;
+
+    if (!data.models || !Array.isArray(data.models)) {
+      throw new Error('Invalid response format from Google API');
+    }
+
+    return data.models
+      .filter((model: any) =>
+        model.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((model: any) => model.name.replace('models/', ''))
+      .sort();
   }
 
   private async queryOllamaModels(
@@ -226,37 +190,25 @@ export class ModelService {
       throw new Error('Ollama URL not set');
     }
 
-    try {
-      const response = await fetch(
-        new URL('/api/tags', settings.ollamaUrl).toString(),
-        {
-          signal: AbortSignal.timeout(10000), // 10 second timeout
-        }
-      );
+    const response = await requestUrl({
+      url: new URL('/api/tags', settings.ollamaUrl).toString(),
+      method: 'GET',
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Ollama API error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.models || !Array.isArray(data.models)) {
-        throw new Error('Invalid response format from Ollama API');
-      }
-
-      return data.models
-        .filter((model: any) => model.name)
-        .map((model: any) => model.name)
-        .sort();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error(
-          'Request timed out. Please check if Ollama is running.'
-        );
-      }
-      throw error;
+    if (response.status !== 200) {
+      throw new Error(`Ollama API error (${response.status}): ${response.text}`);
     }
+
+    const data = response.json;
+
+    if (!data.models || !Array.isArray(data.models)) {
+      throw new Error('Invalid response format from Ollama API');
+    }
+
+    return data.models
+      .filter((model: any) => model.name)
+      .map((model: any) => model.name)
+      .sort();
   }
 
   private async queryLMStudioModels(
@@ -266,88 +218,27 @@ export class ModelService {
       throw new Error('LM Studio URL not set');
     }
 
-    try {
-      const url = new URL('/v1/models', settings.lmstudioUrl).toString();
-      console.log('LM Studio: Attempting to connect to:', url);
+    const response = await requestUrl({
+      url: new URL('/v1/models', settings.lmstudioUrl).toString(),
+      method: 'GET',
+    });
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `LM Studio API error (${response.status}): ${errorText}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!data.data || !Array.isArray(data.data)) {
-        throw new Error('Invalid response format from LM Studio API');
-      }
-
-      const models = data.data
-        .filter((model: any) => model.id)
-        .map((model: any) => model.id)
-        .sort();
-
-      console.log('LM Studio: Successfully loaded models:', models);
-      return models;
-    } catch (error) {
-      console.error('LM Studio connection error:', error);
-
-      if (error.name === 'AbortError') {
-        throw new Error(
-          'Request timed out. Please check if LM Studio server is running.'
-        );
-      }
-
-      // Handle CORS errors specifically
-      if (
-        error.message.includes('CORS') ||
-        error.message.includes('cross-origin')
-      ) {
-        throw new Error(
-          'CORS error: LM Studio server needs to allow cross-origin requests. Please check LM Studio CORS settings.'
-        );
-      }
-
-      // Handle network errors
-      if (
-        error.message.includes('fetch') ||
-        error.message.includes('Failed to fetch')
-      ) {
-        const urlCheck = settings.lmstudioUrl.toLowerCase();
-        let suggestions = [];
-
-        if (urlCheck.includes('localhost') || urlCheck.includes('127.0.0.1')) {
-          suggestions.push(
-            "Try using your computer's IP address instead of localhost"
-          );
-        }
-
-        if (!urlCheck.includes('192.168.')) {
-          suggestions.push(
-            'For WSL users, try using the Windows host IP (e.g., 192.168.68.145:1234)'
-          );
-        }
-
-        suggestions.push('Ensure LM Studio server is running and accessible');
-        suggestions.push('Check if firewall is blocking the connection');
-
-        throw new Error(
-          `Cannot connect to LM Studio server at ${settings.lmstudioUrl}. ${suggestions.join('. ')}.`
-        );
-      }
-
-      throw error;
+    if (response.status !== 200) {
+      throw new Error(
+        `LM Studio API error (${response.status}): ${response.text}`
+      );
     }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from LM Studio API');
+    }
+
+    return data.data
+      .filter((model: any) => model.id)
+      .map((model: any) => model.id)
+      .sort();
   }
 
   private async cacheModels(
