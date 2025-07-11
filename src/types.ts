@@ -3,7 +3,12 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio';
+export type AIProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'ollama'
+  | 'lmstudio';
 
 /**
  * Defines the structure for AI provider details, including their name,

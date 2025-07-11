@@ -54,8 +54,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   removeForbiddenChars: true,
 
   // Prompt and Content
-  customPrompt: 'Create a concise title for this text. Respond with ONLY the title - no explanations, quotes, or extra text. Maximum {max_length} characters.',
-  refinePrompt: 'Make this title shorter (under {max_length} characters): "{title}". Respond with ONLY the new title.',
+  customPrompt:
+    'Create a concise title for this text. Respond with ONLY the title - no explanations, quotes, or extra text. Maximum {max_length} characters.',
+  refinePrompt:
+    'Make this title shorter (under {max_length} characters): "{title}". Respond with ONLY the new title.',
   temperature: 0.3,
   maxTitleLength: 60,
   maxContentLength: 2000,
@@ -85,7 +87,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Lower-case titles')
-      .setDesc('If enabled, all generated titles will be converted to lower case.')
+      .setDesc(
+        'If enabled, all generated titles will be converted to lower case.'
+      )
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.lowerCaseTitles)
@@ -97,7 +101,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Remove forbidden characters')
-      .setDesc('If enabled, characters that are forbidden in filenames will be removed.')
+      .setDesc(
+        'If enabled, characters that are forbidden in filenames will be removed.'
+      )
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.removeForbiddenChars)
@@ -123,12 +129,12 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             const oldProvider = this.plugin.settings.aiProvider;
             this.plugin.settings.aiProvider = value as AIProvider;
             await this.plugin.saveSettings();
-            
+
             // Auto-load models for new provider if it has valid configuration
             if (oldProvider !== value) {
               await this.autoLoadModelsForProvider(value as AIProvider);
             }
-            
+
             this.display(); // Re-render the settings tab
           });
       });
@@ -151,7 +157,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
-      
+
     new Setting(containerEl)
       .setName('Refinement Prompt')
       .setDesc(
@@ -236,7 +242,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
               const oldValue = this.plugin.settings[keyName] as string;
               (this.plugin.settings as any)[keyName] = value;
               await this.plugin.saveSettings();
-              
+
               // Auto-reload models if API key changed and is now valid
               if (oldValue !== value && value.trim()) {
                 await this.autoReloadModels(provider);
@@ -246,12 +252,26 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     } else {
       // Ollama and LM Studio specific settings
       if (provider === 'ollama') {
-        this.renderUrlSettingWithConfirmation(containerEl, 'ollama', 'Ollama Server URL', 'The URL of your local Ollama server.', 'e.g., http://localhost:11434');
+        this.renderUrlSettingWithConfirmation(
+          containerEl,
+          'ollama',
+          'Ollama Server URL',
+          'The URL of your local Ollama server.',
+          'e.g., http://localhost:11434'
+        );
       } else if (provider === 'lmstudio') {
-        this.renderUrlSettingWithConfirmation(containerEl, 'lmstudio', 'LM Studio Server URL', 'The URL of your local LM Studio server.', 'e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234');
-        
+        this.renderUrlSettingWithConfirmation(
+          containerEl,
+          'lmstudio',
+          'LM Studio Server URL',
+          'The URL of your local LM Studio server.',
+          'e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234'
+        );
+
         // Add LM Studio setup instructions
-        const lmStudioInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
+        const lmStudioInfo = containerEl.createEl('div', {
+          cls: 'setting-item-description',
+        });
         lmStudioInfo.innerHTML = `
           <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px;">
             <strong>LM Studio Setup:</strong><br>
@@ -283,7 +303,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const currentModel = this.plugin.settings[modelName] as string;
     const isLoading = this.modelService.isLoading(provider);
     const cachedInfo = this.modelService.getCachedInfo(provider);
-    
+
     // Model selection setting
     const modelSetting = new Setting(containerEl)
       .setName('Model')
@@ -306,7 +326,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           btn.setDisabled(true);
           try {
             const models = await this.modelService.refreshModels(provider);
-            this.populateModelDropdown(dropdown, provider, currentModel, false, models);
+            this.populateModelDropdown(
+              dropdown,
+              provider,
+              currentModel,
+              false,
+              models
+            );
           } catch (error) {
             console.error('Failed to reload models:', error);
           } finally {
@@ -319,14 +345,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     if (cachedInfo) {
       const lastUpdated = new Date(cachedInfo.lastUpdated);
       const timeAgo = this.getTimeAgo(lastUpdated);
-      
+
       let desc = `The ${providerInfo.name} model to use for generation.`;
       if (cachedInfo.error) {
         desc += ` Error: ${cachedInfo.error}`;
       } else if (cachedInfo.models.length > 0) {
         desc += ` (${cachedInfo.models.length} models, updated ${timeAgo})`;
       }
-      
+
       modelSetting.setDesc(desc);
     }
   }
@@ -339,7 +365,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     models?: string[]
   ): Promise<void> {
     dropdown.selectEl.empty();
-    
+
     if (isLoading) {
       dropdown.addOption('loading', 'Loading models...');
       dropdown.setValue('loading');
@@ -348,10 +374,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     }
 
     dropdown.setDisabled(false);
-    
+
     // Get models from parameter or service
-    const availableModels = models || await this.modelService.getModels(provider);
-    
+    const availableModels =
+      models || (await this.modelService.getModels(provider));
+
     if (availableModels.length === 0) {
       dropdown.addOption('no-models', 'No models available');
       dropdown.setValue('no-models');
@@ -378,7 +405,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     // Set change handler
     dropdown.onChange(async (value: string) => {
       if (value === 'loading' || value === 'no-models') return;
-      
+
       const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
       (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
@@ -389,13 +416,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
-    
+
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   }
@@ -433,7 +460,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
   private hasValidConfiguration(provider: AIProvider): boolean {
     const settings = this.plugin.settings;
-    
+
     switch (provider) {
       case 'openai':
         return !!settings.openAiApiKey.trim();
@@ -462,9 +489,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     let tempUrl = currentUrl;
     let hasUnsavedChanges = false;
 
-    const setting = new Setting(containerEl)
-      .setName(name)
-      .setDesc(description);
+    const setting = new Setting(containerEl).setName(name).setDesc(description);
 
     let textComponent: any;
     setting.addText((text) => {
@@ -475,11 +500,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         .onChange((value) => {
           tempUrl = value;
           hasUnsavedChanges = value !== currentUrl;
-          
+
           // Update button states
           okButton.setDisabled(!hasUnsavedChanges);
           cancelButton.setDisabled(!hasUnsavedChanges);
-          
+
           // Visual feedback for unsaved changes
           if (hasUnsavedChanges) {
             text.inputEl.style.borderColor = '#ff6b6b';
@@ -500,17 +525,17 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           if (!tempUrl.trim()) {
             return;
           }
-          
+
           // Save the URL
           this.plugin.settings[urlKey] = tempUrl;
           await this.plugin.saveSettings();
-          
+
           // Reset state
           hasUnsavedChanges = false;
           okButton.setDisabled(true);
           cancelButton.setDisabled(true);
           textComponent.inputEl.style.borderColor = '';
-          
+
           // Load models
           await this.autoReloadModels(provider);
         });
@@ -528,7 +553,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           tempUrl = currentUrl;
           textComponent.setValue(currentUrl);
           hasUnsavedChanges = false;
-          
+
           // Update button states
           okButton.setDisabled(true);
           cancelButton.setDisabled(true);

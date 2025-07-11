@@ -1,11 +1,4 @@
-import {
-  App,
-  Editor,
-  Notice,
-  Plugin,
-  TFile,
-  normalizePath,
-} from 'obsidian';
+import { App, Editor, Notice, Plugin, TFile, normalizePath } from 'obsidian';
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
@@ -93,7 +86,7 @@ export default class TitleGeneratorPlugin extends Plugin {
     const updateStatus = () => {
       statusBarItem.setText(`Generating titles: ${processedCount}/${total}...`);
     };
-    
+
     updateStatus();
 
     for (const file of files) {
@@ -127,7 +120,7 @@ export default class TitleGeneratorPlugin extends Plugin {
       if (newTitle) {
         const { dir, ext } = path.parse(file.path);
         const newPath = normalizePath(`${dir}/${newTitle}${ext}`);
-        
+
         if (newPath !== file.path) {
           await this.app.fileManager.renameFile(file, newPath);
           new Notice(`Title generated: "${newTitle}"`);
@@ -135,7 +128,9 @@ export default class TitleGeneratorPlugin extends Plugin {
           new Notice(`Generated title is the same as the current one.`);
         }
       } else {
-        new Notice('Title generation failed. Please check settings or console.');
+        new Notice(
+          'Title generation failed. Please check settings or console.'
+        );
       }
     } catch (error) {
       console.error('Error during title processing:', error);

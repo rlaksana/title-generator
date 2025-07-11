@@ -35,7 +35,7 @@ jobs:
           # Get current version from manifest.json
           CURRENT_VERSION=$(jq -r .version manifest.json)
           echo "Current version: $CURRENT_VERSION"
-          
+
           # Check if release already exists
           if gh release view "v$CURRENT_VERSION" >/dev/null 2>&1; then
             echo "Release v$CURRENT_VERSION already exists, incrementing version..."
@@ -44,7 +44,7 @@ jobs:
             echo "No existing release found for v$CURRENT_VERSION, using current version..."
             NEEDS_INCREMENT=false
           fi
-          
+
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
           echo "NEEDS_INCREMENT=$NEEDS_INCREMENT" >> $GITHUB_ENV
         env:
@@ -55,25 +55,25 @@ jobs:
         run: |
           # Extract major, minor, patch numbers
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          
+
           # Increment patch version
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
           echo "New version: $NEW_VERSION"
-          
+
           # Update manifest.json
           jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
-          
+
           # Update package.json
           jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.tmp && mv package.tmp package.json
-          
+
           # Update versions.json
           jq --arg version "$NEW_VERSION" --arg minVersion "0.15.0" '. + {($version): $minVersion}' versions.json > versions.tmp && mv versions.tmp versions.json
-          
+
           # Update dist files
           cp manifest.json dist/manifest.json
           cp versions.json dist/versions.json
-          
+
           # Set for next steps
           echo "RELEASE_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           echo "VERSION_INCREMENTED=true" >> $GITHUB_ENV
@@ -112,20 +112,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v$RELEASE_VERSION"
-          
+
           # Check if release already exists (double check)
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, deleting and recreating..."
             gh release delete "$TAG" --yes --cleanup-tag || true
             sleep 2
           fi
-          
+
           # Create the release
           echo "Creating release $TAG..."
           gh release create "$TAG" \
             --title "Release $TAG" \
             --generate-notes \
             dist/main.js dist/manifest.json
-          
+
           echo "Release created successfully!"
           echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/$TAG"
