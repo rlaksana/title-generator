@@ -67,7 +67,6 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
 export class TitleGeneratorSettingTab extends PluginSettingTab {
   plugin: TitleGeneratorPlugin;
   modelService: ModelService;
-  private hasInitiallyLoaded = false;
 
   constructor(app: App, plugin: TitleGeneratorPlugin) {
     super(app, plugin);
@@ -78,24 +77,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     );
   }
 
-  hide() {
-    super.hide();
-    this.hasInitiallyLoaded = false;
-  }
-
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-
-    // Trigger a one-time model load when the tab is first displayed.
-    // This ensures the model list is populated before the user sees it.
-    if (!this.hasInitiallyLoaded) {
-      this.hasInitiallyLoaded = true;
-      this.autoLoadModelsForProvider(this.plugin.settings.aiProvider);
-      // Return early to prevent rendering an incomplete UI.
-      // autoLoadModelsForProvider will call display() again once models are loaded.
-      return;
-    }
 
     containerEl.createEl('h2', { text: 'Enhanced Title Generator Settings' });
 
@@ -143,15 +127,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         dropdown
           .setValue(this.plugin.settings.aiProvider)
           .onChange(async (value) => {
-            const oldProvider = this.plugin.settings.aiProvider;
             this.plugin.settings.aiProvider = value as AIProvider;
             await this.plugin.saveSettings();
-
-            // Auto-load models for new provider if it has valid configuration
-            if (oldProvider !== value) {
-              await this.autoLoadModelsForProvider(value as AIProvider);
-            }
-
             this.display(); // Re-render the settings tab
           });
       });
@@ -272,11 +249,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             .onChange(async (value) => {
               (this.plugin.settings as any)[keyName] = value;
               await this.plugin.saveSettings();
-
-              // Auto-reload models if API key changed and is now valid
-              if (value.trim()) {
-                await this.autoReloadModels(provider, { [keyName]: value });
-              }
             });
         });
     } else {
@@ -375,14 +347,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         .onClick(async () => {
           btn.setDisabled(true);
           try {
-            const models = await this.modelService.refreshModels(provider);
-            this.populateModelDropdown(
-              dropdown,
-              provider,
-              currentModel,
-              false,
-              models
-            );
+            await this.modelService.refreshModels(provider);
+            // Re-render the entire settings tab to reflect the new models
+            this.display();
           } catch (error) {
             console.error('Failed to reload models:', error);
           } finally {
@@ -411,8 +378,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     dropdown: any,
     provider: AIProvider,
     currentModel: string,
-    isLoading: boolean,
-    models?: string[]
+    isLoading: boolean
   ): Promise<void> {
     dropdown.selectEl.empty();
 
@@ -425,9 +391,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     dropdown.setDisabled(false);
 
-    const availableModels =
-      models || (await this.modelService.getModels(provider));
+    const availableModels = await this.modelService.getModels(provider);
     const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
+
+    // Ensure the currently saved model is always in the list,
+    // even if the cache is stale. This prevents the selection from disappearing.
+    if (currentModel && !availableModels.includes(currentModel)) {
+      availableModels.unshift(currentModel);
+    }
 
     if (availableModels.length === 0) {
       const cachedInfo = this.modelService.getCachedInfo(provider);
@@ -439,7 +410,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       } else {
         dropdown.addOption(
           'no-models',
-          'No models found. Check config & refresh.'
+          'Click refresh icon to load models'
         );
       }
       dropdown.setValue('no-models');
@@ -482,34 +453,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
-  }
-
-  private async autoReloadModels(
-    provider: AIProvider,
-    config?: Partial<TitleGeneratorSettings>
-  ): Promise<void> {
-    try {
-      await this.modelService.refreshModels(provider, config);
-      // Re-render the settings to update the dropdown
-      this.display();
-    } catch (error) {
-      console.error(`Failed to auto-reload models for ${provider}:`, error);
-    }
-  }
-
-  private async autoLoadModelsForProvider(provider: AIProvider): Promise<void> {
-    try {
-      // Check if provider has valid configuration
-      if (this.hasValidConfiguration(provider)) {
-        // Load models in background and re-render
-        await this.modelService.refreshModels(provider);
-        if (this.plugin.settings.aiProvider === provider) {
-          this.display();
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to auto-load models for ${provider}:`, error);
-    }
   }
 
   private hasValidConfiguration(provider: AIProvider): boolean {
@@ -589,9 +532,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           okButton.setDisabled(true);
           cancelButton.setDisabled(true);
           textComponent.inputEl.style.borderColor = '';
-
-          // Load models
-          await this.autoReloadModels(provider, { [urlKey]: tempUrl });
         });
     });
 
