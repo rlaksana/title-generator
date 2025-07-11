@@ -78,8 +78,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     );
   }
 
-  onClose() {
-    super.onClose();
+  hide() {
+    super.hide();
     this.hasInitiallyLoaded = false;
   }
 
