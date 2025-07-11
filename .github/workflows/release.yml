@@ -6,7 +6,8 @@ name: 'Automatic Release'
 on:
   push:
     branches:
-      - main # Or 'master', depending on your repository's default branch
+      - main
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   build-and-release:
@@ -14,6 +15,8 @@ jobs:
     steps:
       - name: 'Checkout Code'
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for proper version detection
 
       - name: 'Set up Node.js'
         uses: actions/setup-node@v4
@@ -26,12 +29,30 @@ jobs:
       - name: 'Build Plugin'
         run: npm run build
 
-      - name: 'Auto-increment Version'
+      - name: 'Check if Release Needed'
+        id: check_release
         run: |
           # Get current version from manifest.json
           CURRENT_VERSION=$(jq -r .version manifest.json)
           echo "Current version: $CURRENT_VERSION"
           
+          # Check if release already exists
+          if gh release view "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "Release v$CURRENT_VERSION already exists, incrementing version..."
+            NEEDS_INCREMENT=true
+          else
+            echo "No existing release found for v$CURRENT_VERSION, using current version..."
+            NEEDS_INCREMENT=false
+          fi
+          
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "NEEDS_INCREMENT=$NEEDS_INCREMENT" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Auto-increment Version'
+        if: env.NEEDS_INCREMENT == 'true'
+        run: |
           # Extract major, minor, patch numbers
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           
@@ -49,27 +70,64 @@ jobs:
           # Update versions.json
           jq --arg version "$NEW_VERSION" --arg minVersion "0.15.0" '. + {($version): $minVersion}' versions.json > versions.tmp && mv versions.tmp versions.json
           
-          # Set output for next step
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          # Update dist files
+          cp manifest.json dist/manifest.json
+          cp versions.json dist/versions.json
+          
+          # Set for next steps
+          echo "RELEASE_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "VERSION_INCREMENTED=true" >> $GITHUB_ENV
+
+      - name: 'Set Release Version'
+        if: env.NEEDS_INCREMENT == 'false'
+        run: |
+          echo "RELEASE_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "VERSION_INCREMENTED=false" >> $GITHUB_ENV
 
       - name: 'Commit Version Update'
+        if: env.VERSION_INCREMENTED == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add manifest.json package.json versions.json
-          git commit -m "Auto-increment version to $NEW_VERSION [skip ci]" || exit 0
+          git add manifest.json package.json versions.json dist/manifest.json dist/versions.json
+          git commit -m "Auto-increment version to $RELEASE_VERSION [skip ci]" || exit 0
           git push
+
+      - name: 'Verify Assets Exist'
+        run: |
+          echo "Checking required assets..."
+          if [ ! -f "dist/main.js" ]; then
+            echo "Error: dist/main.js not found!"
+            exit 1
+          fi
+          if [ ! -f "dist/manifest.json" ]; then
+            echo "Error: dist/manifest.json not found!"
+            exit 1
+          fi
+          echo "Assets verified successfully"
+          echo "dist/main.js size: $(wc -c < dist/main.js) bytes"
+          echo "dist/manifest.json content:"
+          cat dist/manifest.json
 
       - name: 'Create GitHub Release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v$NEW_VERSION"
+          TAG="v$RELEASE_VERSION"
           
-          # Create the release using the GitHub CLI
-          # The --generate-notes flag will automatically create release notes
-          # from the titles of the pull requests included in the push.
+          # Check if release already exists (double check)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, deleting and recreating..."
+            gh release delete "$TAG" --yes --cleanup-tag || true
+            sleep 2
+          fi
+          
+          # Create the release
+          echo "Creating release $TAG..."
           gh release create "$TAG" \
             --title "Release $TAG" \
             --generate-notes \
             dist/main.js dist/manifest.json
+          
+          echo "Release created successfully!"
+          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/$TAG"
