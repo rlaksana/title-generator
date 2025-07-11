@@ -56,15 +56,15 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loadedData = await this.loadData();
-    console.log('Loaded data from Obsidian:', JSON.stringify(loadedData));
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-    console.log('Final settings object:', JSON.stringify(this.settings));
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
   async saveSettings() {
-    // Now, we only need to save the data. The service will get it automatically.
-    await this.saveData(this.settings);
+    // Create a deep copy to ensure no reference issues
+    const settingsToSave = JSON.parse(JSON.stringify(this.settings));
+    console.log('Attempting to save settings:', JSON.stringify(settingsToSave));
+    await this.saveData(settingsToSave);
+    console.log('Save operation completed.');
   }
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
