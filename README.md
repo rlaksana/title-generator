@@ -98,6 +98,7 @@ The plugin now automatically detects and loads available models from your config
 -   **Google Gemini**: Use API key from Google AI Studio, not Google Cloud Console.
 -   **Ollama**: Make sure Ollama is running (`ollama serve`) and you have models installed (`ollama pull llama3`).
 -   **LM Studio**: Ensure LM Studio is running with "Start Server" enabled and at least one model is loaded. Default URL is `http://127.0.0.1:1234`.
+-   **WSL Users**: If using WSL/Linux and LM Studio is on Windows, you may need to use the Windows host IP instead of localhost. The plugin will try to auto-detect this.
 
 ## License
 
