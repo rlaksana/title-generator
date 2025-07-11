@@ -60,9 +60,30 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async saveSettings() {
-    // Force a deep copy of the settings object to ensure that Obsidian's
-    // saveData function detects a change and writes it to disk.
-    await this.saveData(JSON.parse(JSON.stringify(this.settings)));
+    // 1. Create a deep copy of the settings object that we intend to save.
+    const settingsToSave = JSON.parse(JSON.stringify(this.settings));
+
+    // 2. Save the data.
+    await this.saveData(settingsToSave);
+
+    // 3. Immediately load the data back from the disk.
+    const loadedSettings = Object.assign(
+      {},
+      DEFAULT_SETTINGS,
+      await this.loadData()
+    );
+
+    // 4. Compare the saved data with the loaded data.
+    if (JSON.stringify(settingsToSave) !== JSON.stringify(loadedSettings)) {
+      new Notice(
+        'Error: Settings failed to save correctly. Please try again.',
+        7000
+      );
+      console.error('Settings Save/Load Mismatch:', {
+        saved: settingsToSave,
+        loaded: loadedSettings,
+      });
+    }
   }
 }
 

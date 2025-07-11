@@ -435,11 +435,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Set change handler
     dropdown.onChange(async (value: string) => {
-      // Recreate the settings object to ensure changes are detected.
-      this.plugin.settings = {
-        ...this.plugin.settings,
-        [modelName]: value,
-      };
+      (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
     });
   }
