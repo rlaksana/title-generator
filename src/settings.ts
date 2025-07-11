@@ -245,7 +245,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
               // Auto-reload models if API key changed and is now valid
               if (value.trim()) {
-                await this.autoReloadModels(provider);
+                await this.autoReloadModels(provider, { [keyName]: value });
               }
             });
         });
@@ -434,11 +434,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     return `${diffDays}d ago`;
   }
 
-  private async autoReloadModels(provider: AIProvider): Promise<void> {
+  private async autoReloadModels(
+    provider: AIProvider,
+    config?: Partial<TitleGeneratorSettings>
+  ): Promise<void> {
     try {
       // Small delay to ensure UI is updated
       setTimeout(async () => {
-        await this.modelService.refreshModels(provider);
+        await this.modelService.refreshModels(provider, config);
         // Re-render the settings to update the dropdown
         this.display();
       }, 100);
@@ -544,7 +547,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           textComponent.inputEl.style.borderColor = '';
 
           // Load models
-          await this.autoReloadModels(provider);
+          await this.autoReloadModels(provider, { [urlKey]: tempUrl });
         });
     });
 

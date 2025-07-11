@@ -54,7 +54,10 @@ export class ModelService {
   /**
    * Force refresh models for a provider
    */
-  async refreshModels(provider: AIProvider): Promise<string[]> {
+  async refreshModels(
+    provider: AIProvider,
+    config?: Partial<TitleGeneratorSettings>
+  ): Promise<string[]> {
     const settings = this.getSettings();
 
     // Set loading state
@@ -62,7 +65,7 @@ export class ModelService {
     await this.saveSettings();
 
     try {
-      const models = await this.queryModels(provider);
+      const models = await this.queryModels(provider, config);
       await this.cacheModels(provider, models);
       return models;
     } catch (error) {
@@ -84,8 +87,12 @@ export class ModelService {
   /**
    * Query models from API for specific provider
    */
-  private async queryModels(provider: AIProvider): Promise<string[]> {
-    const settings = this.getSettings();
+  private async queryModels(
+    provider: AIProvider,
+    config?: Partial<TitleGeneratorSettings>
+  ): Promise<string[]> {
+    // Use provided config first, then fall back to stored settings
+    const settings = { ...this.getSettings(), ...config };
 
     switch (provider) {
       case 'openai':
