@@ -249,6 +249,24 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         this.renderUrlSettingWithConfirmation(containerEl, 'ollama', 'Ollama Server URL', 'The URL of your local Ollama server.', 'e.g., http://localhost:11434');
       } else if (provider === 'lmstudio') {
         this.renderUrlSettingWithConfirmation(containerEl, 'lmstudio', 'LM Studio Server URL', 'The URL of your local LM Studio server.', 'e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234');
+        
+        // Add LM Studio setup instructions
+        const lmStudioInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
+        lmStudioInfo.innerHTML = `
+          <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px;">
+            <strong>LM Studio Setup:</strong><br>
+            1. Start LM Studio and load a model<br>
+            2. Go to "Local Server" tab<br>
+            3. Enable "CORS" (Cross-Origin Resource Sharing)<br>
+            4. Set port to 1234 (or your preferred port)<br>
+            5. Click "Start Server"<br>
+            <br>
+            <strong>Network Issues:</strong><br>
+            • If using WSL, use Windows host IP (e.g., 192.168.68.145:1234)<br>
+            • If using localhost fails, try your computer's IP address<br>
+            • Ensure firewall allows the connection
+          </div>
+        `;
       }
     }
 

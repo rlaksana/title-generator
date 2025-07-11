@@ -222,7 +222,15 @@ export class ModelService {
     }
 
     try {
-      const response = await fetch(new URL('/v1/models', settings.lmstudioUrl).toString(), {
+      const url = new URL('/v1/models', settings.lmstudioUrl).toString();
+      console.log('LM Studio: Attempting to connect to:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
@@ -237,13 +245,42 @@ export class ModelService {
         throw new Error('Invalid response format from LM Studio API');
       }
 
-      return data.data
+      const models = data.data
         .filter((model: any) => model.id)
         .map((model: any) => model.id)
         .sort();
+
+      console.log('LM Studio: Successfully loaded models:', models);
+      return models;
     } catch (error) {
+      console.error('LM Studio connection error:', error);
+      
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please check if LM Studio server is running.');
+      }
+      
+      // Handle CORS errors specifically
+      if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
+        throw new Error('CORS error: LM Studio server needs to allow cross-origin requests. Please check LM Studio CORS settings.');
+      }
+      
+      // Handle network errors
+      if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+        const urlCheck = settings.lmstudioUrl.toLowerCase();
+        let suggestions = [];
+        
+        if (urlCheck.includes('localhost') || urlCheck.includes('127.0.0.1')) {
+          suggestions.push('Try using your computer\'s IP address instead of localhost');
+        }
+        
+        if (!urlCheck.includes('192.168.')) {
+          suggestions.push('For WSL users, try using the Windows host IP (e.g., 192.168.68.145:1234)');
+        }
+        
+        suggestions.push('Ensure LM Studio server is running and accessible');
+        suggestions.push('Check if firewall is blocking the connection');
+        
+        throw new Error(`Cannot connect to LM Studio server at ${settings.lmstudioUrl}. ${suggestions.join('. ')}.`);
       }
       
       throw error;
