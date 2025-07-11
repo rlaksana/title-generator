@@ -428,6 +428,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Set change handler
     dropdown.onChange(async (value: string) => {
+      console.log(
+        `Saving model for ${provider}: ${value}. Target setting: ${modelName}`
+      );
       (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
     });

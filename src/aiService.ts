@@ -18,6 +18,7 @@ export class AIService {
 
   public async generateTitle(noteContent: string): Promise<string> {
     const settings = this.getSettings();
+    console.log('AIService received settings:', JSON.stringify(settings));
 
     // Validate configuration before proceeding
     if (!this.isConfigurationValid(settings)) {
