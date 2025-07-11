@@ -245,6 +245,12 @@ export class ModelService {
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please check if LM Studio server is running.');
       }
+      
+      // More specific error handling for LM Studio
+      if (error.message.includes('fetch')) {
+        throw new Error('Cannot connect to LM Studio server. Please ensure: 1) LM Studio is running, 2) Server is started, 3) A model is loaded, 4) URL is correct (default: http://127.0.0.1:1234)');
+      }
+      
       throw error;
     }
   }
