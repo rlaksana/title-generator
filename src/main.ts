@@ -1,4 +1,5 @@
 import { App, Editor, Notice, Plugin, TFile, normalizePath } from 'obsidian';
+// Test #1: Enhanced automation testing
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
