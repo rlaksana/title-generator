@@ -36,14 +36,14 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   anthropicApiKey: '',
   googleApiKey: '',
   ollamaUrl: 'http://localhost:11434',
-  lmstudioUrl: 'http://127.0.0.1:1234',
+  lmstudioUrl: 'http://192.168.68.145:1234',
 
   // Models
-  openAiModel: 'gpt-4o-mini',
-  anthropicModel: 'claude-3-haiku-20240307',
-  googleModel: 'gemini-1.5-flash-latest',
-  ollamaModel: 'llama3',
-  lmstudioModel: 'llama-3',
+  openAiModel: '',
+  anthropicModel: '',
+  googleModel: '',
+  ollamaModel: '',
+  lmstudioModel: '',
 
   // Dynamic Model Caching
   cachedModels: {},
@@ -246,43 +246,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     } else {
       // Ollama and LM Studio specific settings
       if (provider === 'ollama') {
-        new Setting(containerEl)
-          .setName('Ollama Server URL')
-          .setDesc('The URL of your local Ollama server.')
-          .addText((text) => {
-            text
-              .setPlaceholder('e.g., http://localhost:11434')
-              .setValue(this.plugin.settings.ollamaUrl)
-              .onChange(async (value) => {
-                const oldValue = this.plugin.settings.ollamaUrl;
-                this.plugin.settings.ollamaUrl = value;
-                await this.plugin.saveSettings();
-                
-                // Auto-reload models if URL changed and is now valid
-                if (oldValue !== value && value.trim()) {
-                  await this.autoReloadModels('ollama');
-                }
-              });
-          });
+        this.renderUrlSettingWithConfirmation(containerEl, 'ollama', 'Ollama Server URL', 'The URL of your local Ollama server.', 'e.g., http://localhost:11434');
       } else if (provider === 'lmstudio') {
-        new Setting(containerEl)
-          .setName('LM Studio Server URL')
-          .setDesc('The URL of your local LM Studio server. Try: http://127.0.0.1:1234, http://192.168.68.145:1234, or your local IP.')
-          .addText((text) => {
-            text
-              .setPlaceholder('e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234')
-              .setValue(this.plugin.settings.lmstudioUrl)
-              .onChange(async (value) => {
-                const oldValue = this.plugin.settings.lmstudioUrl;
-                this.plugin.settings.lmstudioUrl = value;
-                await this.plugin.saveSettings();
-                
-                // Auto-reload models if URL changed and is now valid
-                if (oldValue !== value && value.trim()) {
-                  await this.autoReloadModels('lmstudio');
-                }
-              });
-          });
+        this.renderUrlSettingWithConfirmation(containerEl, 'lmstudio', 'LM Studio Server URL', 'The URL of your local LM Studio server.', 'e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234');
       }
     }
 
@@ -464,5 +430,92 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       default:
         return false;
     }
+  }
+
+  private renderUrlSettingWithConfirmation(
+    containerEl: HTMLElement,
+    provider: 'ollama' | 'lmstudio',
+    name: string,
+    description: string,
+    placeholder: string
+  ): void {
+    const urlKey = provider === 'ollama' ? 'ollamaUrl' : 'lmstudioUrl';
+    const currentUrl = this.plugin.settings[urlKey];
+    let tempUrl = currentUrl;
+    let hasUnsavedChanges = false;
+
+    const setting = new Setting(containerEl)
+      .setName(name)
+      .setDesc(description);
+
+    let textComponent: any;
+    setting.addText((text) => {
+      textComponent = text;
+      text
+        .setPlaceholder(placeholder)
+        .setValue(currentUrl)
+        .onChange((value) => {
+          tempUrl = value;
+          hasUnsavedChanges = value !== currentUrl;
+          
+          // Update button states
+          okButton.setDisabled(!hasUnsavedChanges);
+          cancelButton.setDisabled(!hasUnsavedChanges);
+          
+          // Visual feedback for unsaved changes
+          if (hasUnsavedChanges) {
+            text.inputEl.style.borderColor = '#ff6b6b';
+          } else {
+            text.inputEl.style.borderColor = '';
+          }
+        });
+    });
+
+    // OK button
+    let okButton: any;
+    setting.addButton((btn) => {
+      okButton = btn;
+      btn
+        .setButtonText('OK')
+        .setDisabled(true)
+        .onClick(async () => {
+          if (!tempUrl.trim()) {
+            return;
+          }
+          
+          // Save the URL
+          this.plugin.settings[urlKey] = tempUrl;
+          await this.plugin.saveSettings();
+          
+          // Reset state
+          hasUnsavedChanges = false;
+          okButton.setDisabled(true);
+          cancelButton.setDisabled(true);
+          textComponent.inputEl.style.borderColor = '';
+          
+          // Load models
+          await this.autoReloadModels(provider);
+        });
+    });
+
+    // Cancel button
+    let cancelButton: any;
+    setting.addButton((btn) => {
+      cancelButton = btn;
+      btn
+        .setButtonText('Cancel')
+        .setDisabled(true)
+        .onClick(() => {
+          // Reset to saved value
+          tempUrl = currentUrl;
+          textComponent.setValue(currentUrl);
+          hasUnsavedChanges = false;
+          
+          // Update button states
+          okButton.setDisabled(true);
+          cancelButton.setDisabled(true);
+          textComponent.inputEl.style.borderColor = '';
+        });
+    });
   }
 }

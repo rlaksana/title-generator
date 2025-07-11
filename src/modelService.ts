@@ -1,6 +1,5 @@
 import { Notice } from 'obsidian';
 import type { AIProvider, TitleGeneratorSettings, CachedModels } from './types';
-import { findWorkingLMStudioUrl } from './networkUtils';
 
 /**
  * Service for querying and managing AI provider models
@@ -223,10 +222,7 @@ export class ModelService {
     }
 
     try {
-      // Try to find a working URL (especially helpful for WSL users)
-      const workingUrl = await findWorkingLMStudioUrl(settings.lmstudioUrl);
-      
-      const response = await fetch(new URL('/v1/models', workingUrl).toString(), {
+      const response = await fetch(new URL('/v1/models', settings.lmstudioUrl).toString(), {
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
@@ -241,11 +237,6 @@ export class ModelService {
         throw new Error('Invalid response format from LM Studio API');
       }
 
-      // If we found a different working URL, suggest it to the user
-      if (workingUrl !== settings.lmstudioUrl) {
-        new Notice(`LM Studio connected via ${workingUrl}. Consider updating your URL setting.`, 5000);
-      }
-
       return data.data
         .filter((model: any) => model.id)
         .map((model: any) => model.id)
@@ -253,14 +244,6 @@ export class ModelService {
     } catch (error) {
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please check if LM Studio server is running.');
-      }
-      
-      // More specific error handling for LM Studio
-      if (error.message.includes('fetch')) {
-        // Note: WSL detection not available in browser environment
-        const wslTip = ' If you\'re using WSL, try using the Windows host IP instead of localhost.';
-        
-        throw new Error(`Cannot connect to LM Studio server. Please ensure: 1) LM Studio is running, 2) Server is started, 3) A model is loaded, 4) URL is correct (default: http://127.0.0.1:1234).${wslTip}`);
       }
       
       throw error;
