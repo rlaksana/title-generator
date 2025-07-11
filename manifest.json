@@ -1,7 +1,7 @@
 {
   "id": "title-generator",
   "name": "Enhanced Title Generator",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "minAppVersion": "0.15.0",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "author": "Enhanced Title Generator Contributors",
