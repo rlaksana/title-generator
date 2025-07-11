@@ -26,11 +26,7 @@
     "gemini",
     "ollama"
   ],
-  "author": {
-    "name": "Jascha Ephraim",
-    "email": "jaschaephraim@gmail.com",
-    "url": "https://jaschaephraim.com"
-  },
+  "author": "Enhanced Title Generator Contributors",
   "license": "MIT",
   "devDependencies": {
     "@types/path-browserify": "^1.0.0",

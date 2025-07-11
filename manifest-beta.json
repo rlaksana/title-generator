@@ -4,10 +4,6 @@
   "version": "2.0.0-beta",
   "minAppVersion": "0.15.0",
   "description": "Generate titles using multiple AI providers with smart filename handling (beta)",
-  "author": "Jascha Ephraim & Community",
-  "authorUrl": "https://jaschaephriam.com",
-  "fundingUrl": {
-    "PayPal": "https://paypal.me/JaschaEphraim"
-  },
+  "author": "Enhanced Title Generator Contributors",
   "isDesktopOnly": false
 }
