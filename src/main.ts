@@ -1,5 +1,5 @@
 import { App, Editor, Notice, Plugin, TFile, normalizePath } from 'obsidian';
-// Test #2: Continuous integration validation
+// Test #3: Version auto-increment validation
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
