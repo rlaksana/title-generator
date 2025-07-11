@@ -138,13 +138,44 @@ export class ModelService {
   private async queryAnthropicModels(
     settings: TitleGeneratorSettings
   ): Promise<string[]> {
-    // Anthropic doesn't have a public models API, return static list
-    return [
-      'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307',
-      'claude-3-5-sonnet-20240620',
-    ];
+    if (!settings.anthropicApiKey.trim()) {
+      throw new Error('Anthropic API key not set');
+    }
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': settings.anthropicApiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Anthropic API error (${response.status}): ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error('Invalid response format from Anthropic API');
+      }
+
+      return data.data
+        .map((model: any) => model.id)
+        .sort();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error(
+          'Request timed out. Please check your internet connection.'
+        );
+      }
+      throw error;
+    }
   }
 
   private async queryGoogleModels(
