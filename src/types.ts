@@ -16,6 +16,15 @@ export interface AIProviderDetails {
 }
 
 /**
+ * Cached model information for a provider
+ */
+export interface CachedModels {
+  models: string[];
+  lastUpdated: number;
+  error?: string;
+}
+
+/**
  * Main settings interface for the plugin.
  */
 export interface TitleGeneratorSettings {
@@ -33,6 +42,16 @@ export interface TitleGeneratorSettings {
   googleModel: string;
   ollamaModel: string;
   lmstudioModel: string;
+
+  // Dynamic Model Caching
+  cachedModels: {
+    [provider: string]: CachedModels;
+  };
+
+  // UI Loading State
+  modelLoadingState: {
+    [provider: string]: boolean;
+  };
 
   // Title Settings
   lowerCaseTitles: boolean;

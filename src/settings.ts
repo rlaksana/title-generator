@@ -1,34 +1,30 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type { AIProvider, TitleGeneratorSettings } from './types';
 import type TitleGeneratorPlugin from './main';
+import { ModelService } from './modelService';
 
 export const AI_PROVIDERS: Record<
   AIProvider,
-  { name: string; models: string[]; requiresApiKey: boolean }
+  { name: string; requiresApiKey: boolean }
 > = {
   openai: {
     name: 'OpenAI',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
     requiresApiKey: true,
   },
   anthropic: {
     name: 'Anthropic',
-    models: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
     requiresApiKey: true,
   },
   google: {
     name: 'Google Gemini',
-    models: ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'gemini-1.0-pro'],
     requiresApiKey: true,
   },
   ollama: {
     name: 'Ollama',
-    models: ['llama3', 'llama2', 'mistral', 'codellama', 'phi3'],
     requiresApiKey: false,
   },
   lmstudio: {
     name: 'LM Studio',
-    models: ['llama-3', 'mistral-7b', 'codellama', 'phi-3', 'qwen2', 'gemma2'],
     requiresApiKey: false,
   },
 };
@@ -49,6 +45,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   ollamaModel: 'llama3',
   lmstudioModel: 'llama-3',
 
+  // Dynamic Model Caching
+  cachedModels: {},
+  modelLoadingState: {},
+
   // Title
   lowerCaseTitles: false,
   removeForbiddenChars: true,
@@ -63,10 +63,15 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {
   plugin: TitleGeneratorPlugin;
+  modelService: ModelService;
 
   constructor(app: App, plugin: TitleGeneratorPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.modelService = new ModelService(
+      () => this.plugin.settings,
+      () => this.plugin.saveSettings()
+    );
   }
 
   display(): void {
@@ -115,8 +120,15 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         dropdown
           .setValue(this.plugin.settings.aiProvider)
           .onChange(async (value) => {
+            const oldProvider = this.plugin.settings.aiProvider;
             this.plugin.settings.aiProvider = value as AIProvider;
             await this.plugin.saveSettings();
+            
+            // Auto-load models for new provider if it has valid configuration
+            if (oldProvider !== value) {
+              await this.autoLoadModelsForProvider(value as AIProvider);
+            }
+            
             this.display(); // Re-render the settings tab
           });
       });
@@ -221,8 +233,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           text
             .setValue(this.plugin.settings[keyName] as string)
             .onChange(async (value) => {
+              const oldValue = this.plugin.settings[keyName] as string;
               (this.plugin.settings as any)[keyName] = value;
               await this.plugin.saveSettings();
+              
+              // Auto-reload models if API key changed and is now valid
+              if (oldValue !== value && value.trim()) {
+                await this.autoReloadModels(provider);
+              }
             });
         });
     } else {
@@ -236,8 +254,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
               .setPlaceholder('e.g., http://localhost:11434')
               .setValue(this.plugin.settings.ollamaUrl)
               .onChange(async (value) => {
+                const oldValue = this.plugin.settings.ollamaUrl;
                 this.plugin.settings.ollamaUrl = value;
                 await this.plugin.saveSettings();
+                
+                // Auto-reload models if URL changed and is now valid
+                if (oldValue !== value && value.trim()) {
+                  await this.autoReloadModels('ollama');
+                }
               });
           });
       } else if (provider === 'lmstudio') {
@@ -249,26 +273,196 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
               .setPlaceholder('e.g., http://127.0.0.1:1234')
               .setValue(this.plugin.settings.lmstudioUrl)
               .onChange(async (value) => {
+                const oldValue = this.plugin.settings.lmstudioUrl;
                 this.plugin.settings.lmstudioUrl = value;
                 await this.plugin.saveSettings();
+                
+                // Auto-reload models if URL changed and is now valid
+                if (oldValue !== value && value.trim()) {
+                  await this.autoReloadModels('lmstudio');
+                }
               });
           });
       }
     }
 
-    // Model selection
+    // Model selection with reload button
+    this.renderModelSelection(containerEl, provider, providerInfo);
+  }
+
+  private async renderModelSelection(
+    containerEl: HTMLElement,
+    provider: AIProvider,
+    providerInfo: { name: string; requiresApiKey: boolean }
+  ): Promise<void> {
     const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
-    new Setting(containerEl)
+    const currentModel = this.plugin.settings[modelName] as string;
+    const isLoading = this.modelService.isLoading(provider);
+    const cachedInfo = this.modelService.getCachedInfo(provider);
+    
+    // Model selection setting
+    const modelSetting = new Setting(containerEl)
       .setName('Model')
-      .setDesc(`The ${providerInfo.name} model to use for generation.`)
-      .addDropdown((dropdown) => {
-        providerInfo.models.forEach((m) => dropdown.addOption(m, m));
-        dropdown
-          .setValue(this.plugin.settings[modelName] as string)
-          .onChange(async (value) => {
-            (this.plugin.settings as any)[modelName] = value;
-            await this.plugin.saveSettings();
-          });
-      });
+      .setDesc(`The ${providerInfo.name} model to use for generation.`);
+
+    // Add model dropdown
+    let dropdown: any;
+    modelSetting.addDropdown((d) => {
+      dropdown = d;
+      this.populateModelDropdown(d, provider, currentModel, isLoading);
+    });
+
+    // Add reload button
+    modelSetting.addButton((btn) => {
+      btn
+        .setIcon('refresh-cw')
+        .setTooltip('Reload models')
+        .setDisabled(isLoading)
+        .onClick(async () => {
+          btn.setDisabled(true);
+          try {
+            const models = await this.modelService.refreshModels(provider);
+            this.populateModelDropdown(dropdown, provider, currentModel, false, models);
+          } catch (error) {
+            console.error('Failed to reload models:', error);
+          } finally {
+            btn.setDisabled(false);
+          }
+        });
+    });
+
+    // Add cache info
+    if (cachedInfo) {
+      const lastUpdated = new Date(cachedInfo.lastUpdated);
+      const timeAgo = this.getTimeAgo(lastUpdated);
+      
+      let desc = `The ${providerInfo.name} model to use for generation.`;
+      if (cachedInfo.error) {
+        desc += ` Error: ${cachedInfo.error}`;
+      } else if (cachedInfo.models.length > 0) {
+        desc += ` (${cachedInfo.models.length} models, updated ${timeAgo})`;
+      }
+      
+      modelSetting.setDesc(desc);
+    }
+  }
+
+  private async populateModelDropdown(
+    dropdown: any,
+    provider: AIProvider,
+    currentModel: string,
+    isLoading: boolean,
+    models?: string[]
+  ): Promise<void> {
+    dropdown.selectEl.empty();
+    
+    if (isLoading) {
+      dropdown.addOption('loading', 'Loading models...');
+      dropdown.setValue('loading');
+      dropdown.setDisabled(true);
+      return;
+    }
+
+    dropdown.setDisabled(false);
+    
+    // Get models from parameter or service
+    const availableModels = models || await this.modelService.getModels(provider);
+    
+    if (availableModels.length === 0) {
+      dropdown.addOption('no-models', 'No models available');
+      dropdown.setValue('no-models');
+      dropdown.setDisabled(true);
+      return;
+    }
+
+    // Add models to dropdown
+    availableModels.forEach((model) => {
+      dropdown.addOption(model, model);
+    });
+
+    // Set current value or first available model
+    if (availableModels.includes(currentModel)) {
+      dropdown.setValue(currentModel);
+    } else {
+      dropdown.setValue(availableModels[0]);
+      // Update settings with new model
+      const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
+      (this.plugin.settings as any)[modelName] = availableModels[0];
+      await this.plugin.saveSettings();
+    }
+
+    // Set change handler
+    dropdown.onChange(async (value: string) => {
+      if (value === 'loading' || value === 'no-models') return;
+      
+      const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
+      (this.plugin.settings as any)[modelName] = value;
+      await this.plugin.saveSettings();
+    });
+  }
+
+  private getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  private async autoReloadModels(provider: AIProvider): Promise<void> {
+    try {
+      // Small delay to ensure UI is updated
+      setTimeout(async () => {
+        await this.modelService.refreshModels(provider);
+        // Re-render the settings to update the dropdown
+        this.display();
+      }, 100);
+    } catch (error) {
+      console.error(`Failed to auto-reload models for ${provider}:`, error);
+    }
+  }
+
+  private async autoLoadModelsForProvider(provider: AIProvider): Promise<void> {
+    try {
+      // Check if provider has valid configuration
+      if (this.hasValidConfiguration(provider)) {
+        // Load models in background
+        setTimeout(async () => {
+          await this.modelService.getModels(provider);
+          // Re-render to update dropdown if still on same provider
+          if (this.plugin.settings.aiProvider === provider) {
+            this.display();
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error(`Failed to auto-load models for ${provider}:`, error);
+    }
+  }
+
+  private hasValidConfiguration(provider: AIProvider): boolean {
+    const settings = this.plugin.settings;
+    
+    switch (provider) {
+      case 'openai':
+        return !!settings.openAiApiKey.trim();
+      case 'anthropic':
+        return !!settings.anthropicApiKey.trim();
+      case 'google':
+        return !!settings.googleApiKey.trim();
+      case 'ollama':
+        return !!settings.ollamaUrl.trim();
+      case 'lmstudio':
+        return !!settings.lmstudioUrl.trim();
+      default:
+        return false;
+    }
   }
 }

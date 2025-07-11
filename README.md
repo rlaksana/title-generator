@@ -6,9 +6,11 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 ## Key Features
 
+- **Dynamic Model Loading**: Automatically detects and loads available models from your configured AI providers - no more hardcoded model lists!
 - **Intelligent Title Refinement**: If an AI-generated title is too long, the plugin asks the AI to shorten it, preserving the core meaning instead of just cutting it off.
 - **Cost-Efficient Analysis**: Limit the amount of text sent to the AI (e.g., the first 2000 characters) to significantly reduce token usage and cost on long notes.
 - **Multi-Provider AI**: Choose from OpenAI, Anthropic, Google Gemini, local Ollama, or LM Studio.
+- **Smart Model Caching**: Models are cached with TTL (1 hour) and automatically refreshed when API keys change.
 - **Mobile-First Design**: All API calls use Obsidian's native `fetch` API, ensuring 100% compatibility on mobile devices and removing heavy dependencies.
 - **Fully Customizable Prompts**: Tailor the initial prompt and the refinement prompt to fit your exact needs.
 - **Smart Filename Sanitization**: Automatically removes OS-forbidden characters and normalizes whitespace to create safe, clean filenames.
@@ -37,7 +39,7 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **AI Provider**              | Select your preferred AI service (OpenAI, Anthropic, Google Gemini, Ollama, LM Studio).                            | `Ollama`                                                                                               |
 | **API Key / Server URL**     | Your API key for the selected cloud service, or the URL for your local Ollama instance.                 | (empty) / `http://localhost:11434`                                                                     |
-| **Model**                    | The specific AI model to use for generation.                                                            | `gpt-4o-mini`                                                                                          |
+| **Model**                    | The specific AI model to use for generation. Models are loaded dynamically from your provider.          | Auto-detected from provider                                                                            |
 | **Initial Prompt**           | The prompt template for the first request. Use `{max_length}` as a placeholder.                         | `Generate a concise, descriptive title for the following text. The title must be a maximum of {max_length} characters.` |
 | **Refinement Prompt**        | The prompt used if the first title is too long. Use `{max_length}` and `{title}`.                       | `The following title is too long. Please shorten it to be under {max_length} characters, while preserving its core meaning: "{title}"` |
 | **Temperature**              | Controls AI creativity (0.0 = deterministic, 1.0 = highly creative).                                    | `0.7`                                                                                                  |
@@ -46,20 +48,56 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 | **Lower-case titles**        | If enabled, converts all titles to lower case.                                                          | `false`                                                                                                |
 | **Remove forbidden chars**   | If enabled, strips characters that are invalid in filenames.                                            | `true`                                                                                                 |
 
-### Default Models
+## Dynamic Model Loading
 
--   **OpenAI**: `gpt-4o-mini`
--   **Anthropic**: `claude-3-haiku-20240307`
--   **Google Gemini**: `gemini-1.5-flash-latest`
--   **Ollama**: `llama3`
--   **LM Studio**: `llama-3`
+The plugin now automatically detects and loads available models from your configured AI providers:
+
+### How It Works
+
+1. **Auto-Detection**: When you set an API key or server URL, the plugin automatically queries for available models
+2. **Smart Caching**: Models are cached for 1 hour to reduce API calls and improve performance
+3. **Reload Button**: Click the refresh button next to the model dropdown to manually reload models
+4. **Error Handling**: Clear error messages help troubleshoot connection issues
+5. **Fallback Models**: If model loading fails, the plugin falls back to a curated list of popular models
+
+### Model Loading Triggers
+
+- Setting or changing an API key for cloud providers
+- Changing server URLs for local providers (Ollama, LM Studio)
+- Switching between AI providers
+- Clicking the reload models button
+- Opening settings (if models are older than 1 hour)
+
+### Example Models (Auto-detected)
+
+-   **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`, etc.
+-   **Anthropic**: `claude-3-opus-20240229`, `claude-3-sonnet-20240229`, `claude-3-haiku-20240307`, etc.
+-   **Google Gemini**: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`, `gemini-1.0-pro`, etc.
+-   **Ollama**: Shows your locally installed models (e.g., `llama3`, `mistral`, `codellama`)
+-   **LM Studio**: Shows your loaded models in LM Studio server
 
 ## Troubleshooting
 
+### General Issues
+
 -   **Invalid API Key**: Double-check your API key in your provider's dashboard.
 -   **Network Errors**: For cloud providers, ensure you have an internet connection. For local providers (Ollama/LM Studio), verify your server is running and accessible at the configured URL.
--   **LM Studio Connection**: Make sure LM Studio is running with "Start Server" enabled and the model is loaded. Default URL is `http://127.0.0.1:1234`.
 -   **No Title Generated**: Check the Obsidian developer console (`Ctrl/Cmd + Shift + I`) for any error messages from the plugin.
+
+### Model Loading Issues
+
+-   **Models Not Loading**: Click the reload button (🔄) next to the model dropdown to manually refresh the model list.
+-   **"Loading models..." Stuck**: Check your internet connection and API key. The plugin has a 10-second timeout for model queries.
+-   **Error Messages in Settings**: Hover over the model dropdown description to see detailed error messages and timestamps.
+-   **Fallback Models**: If model loading fails, the plugin will show a curated list of popular models as fallback.
+
+### Provider-Specific Issues
+
+-   **OpenAI**: Ensure your API key has the correct permissions and billing is set up.
+-   **Anthropic**: API key must be from the Anthropic Console, not Claude.ai.
+-   **Google Gemini**: Use API key from Google AI Studio, not Google Cloud Console.
+-   **Ollama**: Make sure Ollama is running (`ollama serve`) and you have models installed (`ollama pull llama3`).
+-   **LM Studio**: Ensure LM Studio is running with "Start Server" enabled and at least one model is loaded. Default URL is `http://127.0.0.1:1234`.
 
 ## License
 
