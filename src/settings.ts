@@ -30,7 +30,7 @@ export const AI_PROVIDERS: Record<
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   // Provider
-  aiProvider: 'openai',
+  aiProvider: 'ollama',
   openAiApiKey: '',
   anthropicApiKey: '',
   googleApiKey: '',
