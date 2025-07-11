@@ -313,7 +313,27 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     provider: AIProvider,
     providerInfo: { name: string; requiresApiKey: boolean }
   ): Promise<void> {
-    const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
+    let modelName: keyof TitleGeneratorSettings;
+    switch (provider) {
+      case 'openai':
+        modelName = 'openAiModel';
+        break;
+      case 'anthropic':
+        modelName = 'anthropicModel';
+        break;
+      case 'google':
+        modelName = 'googleModel';
+        break;
+      case 'ollama':
+        modelName = 'ollamaModel';
+        break;
+      case 'lmstudio':
+        modelName = 'lmstudioModel';
+        break;
+      default:
+        return; // Should not happen
+    }
+
     const currentModel = this.plugin.settings[modelName] as string;
     const isLoading = this.modelService.isLoading(provider);
     const cachedInfo = this.modelService.getCachedInfo(provider);
@@ -428,9 +448,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Set change handler
     dropdown.onChange(async (value: string) => {
-      console.log(
-        `Saving model for ${provider}: ${value}. Target setting: ${modelName}`
-      );
       (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
     });
