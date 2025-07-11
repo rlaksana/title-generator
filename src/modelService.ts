@@ -47,8 +47,8 @@ export class ModelService {
       return cached.models;
     }
 
-    // Final fallback to hardcoded models
-    return this.getFallbackModels(provider);
+    // Final fallback to empty array
+    return [];
   }
 
   /**
@@ -73,7 +73,7 @@ export class ModelService {
         `Failed to load models for ${provider}: ${errorMessage}`,
         7000
       );
-      return this.getFallbackModels(provider);
+      return [];
     } finally {
       // Clear loading state
       settings.modelLoadingState[provider] = false;
@@ -350,44 +350,6 @@ export class ModelService {
       error,
     };
     await this.saveSettings();
-  }
-
-  private getFallbackModels(provider: AIProvider): string[] {
-    switch (provider) {
-      case 'openai':
-        return [
-          'gpt-4o',
-          'gpt-4o-mini',
-          'gpt-4-turbo',
-          'gpt-4',
-          'gpt-3.5-turbo',
-        ];
-      case 'anthropic':
-        return [
-          'claude-3-opus-20240229',
-          'claude-3-sonnet-20240229',
-          'claude-3-haiku-20240307',
-        ];
-      case 'google':
-        return [
-          'gemini-1.5-pro-latest',
-          'gemini-1.5-flash-latest',
-          'gemini-1.0-pro',
-        ];
-      case 'ollama':
-        return ['llama3', 'llama2', 'mistral', 'codellama', 'phi3'];
-      case 'lmstudio':
-        return [
-          'llama-3',
-          'mistral-7b',
-          'codellama',
-          'phi-3',
-          'qwen2',
-          'gemma2',
-        ];
-      default:
-        return [];
-    }
   }
 
   /**

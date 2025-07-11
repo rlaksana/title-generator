@@ -89,11 +89,25 @@ export class AIService {
           );
           return false;
         }
+        if (!settings.openAiModel) {
+          new Notice(
+            'OpenAI model is not selected. Please select a model in the plugin settings.',
+            8000
+          );
+          return false;
+        }
         break;
       case 'anthropic':
         if (!settings.anthropicApiKey.trim()) {
           new Notice(
             'Anthropic API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.',
+            8000
+          );
+          return false;
+        }
+        if (!settings.anthropicModel) {
+          new Notice(
+            'Anthropic model is not selected. Please select a model in the plugin settings.',
             8000
           );
           return false;
@@ -107,6 +121,13 @@ export class AIService {
           );
           return false;
         }
+        if (!settings.googleModel) {
+          new Notice(
+            'Google Gemini model is not selected. Please select a model in the plugin settings.',
+            8000
+          );
+          return false;
+        }
         break;
       case 'ollama':
         if (!settings.ollamaUrl.trim()) {
@@ -116,12 +137,26 @@ export class AIService {
           );
           return false;
         }
+        if (!settings.ollamaModel) {
+          new Notice(
+            'Ollama model is not selected. Please select a model in the plugin settings.',
+            8000
+          );
+          return false;
+        }
         break;
       case 'lmstudio':
         if (!settings.lmstudioUrl.trim()) {
           new Notice(
             'LM Studio server URL is not set. Please configure it in plugin settings.',
             6000
+          );
+          return false;
+        }
+        if (!settings.lmstudioModel) {
+          new Notice(
+            'LM Studio model is not selected. Please select a model in the plugin settings.',
+            8000
           );
           return false;
         }

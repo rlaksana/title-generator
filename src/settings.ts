@@ -376,38 +376,45 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     dropdown.setDisabled(false);
 
-    // Get models from parameter or service
     const availableModels =
       models || (await this.modelService.getModels(provider));
+    const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
 
     if (availableModels.length === 0) {
-      dropdown.addOption('no-models', 'No models available');
+      const cachedInfo = this.modelService.getCachedInfo(provider);
+      if (cachedInfo?.error) {
+        dropdown.addOption(
+          'no-models',
+          `Error: ${cachedInfo.error.substring(0, 50)}...`
+        );
+      } else {
+        dropdown.addOption(
+          'no-models',
+          'No models found. Check config & refresh.'
+        );
+      }
       dropdown.setValue('no-models');
       dropdown.setDisabled(true);
       return;
     }
+
+    // Add a placeholder
+    dropdown.addOption('', 'Select a model...');
 
     // Add models to dropdown
     availableModels.forEach((model) => {
       dropdown.addOption(model, model);
     });
 
-    // Set current value or first available model
-    if (availableModels.includes(currentModel)) {
+    // Set current value if it's valid, otherwise use placeholder
+    if (currentModel && availableModels.includes(currentModel)) {
       dropdown.setValue(currentModel);
     } else {
-      dropdown.setValue(availableModels[0]);
-      // Update settings with new model
-      const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
-      (this.plugin.settings as any)[modelName] = availableModels[0];
-      await this.plugin.saveSettings();
+      dropdown.setValue('');
     }
 
     // Set change handler
     dropdown.onChange(async (value: string) => {
-      if (value === 'loading' || value === 'no-models') return;
-
-      const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
       (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
     });
