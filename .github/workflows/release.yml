@@ -26,13 +26,45 @@ jobs:
       - name: 'Build Plugin'
         run: npm run build
 
+      - name: 'Auto-increment Version'
+        run: |
+          # Get current version from manifest.json
+          CURRENT_VERSION=$(jq -r .version manifest.json)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Extract major, minor, patch numbers
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          
+          # Increment patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "New version: $NEW_VERSION"
+          
+          # Update manifest.json
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+          
+          # Update package.json
+          jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.tmp && mv package.tmp package.json
+          
+          # Update versions.json
+          jq --arg version "$NEW_VERSION" --arg minVersion "0.15.0" '. + {($version): $minVersion}' versions.json > versions.tmp && mv versions.tmp versions.json
+          
+          # Set output for next step
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: 'Commit Version Update'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add manifest.json package.json versions.json
+          git commit -m "Auto-increment version to $NEW_VERSION [skip ci]" || exit 0
+          git push
+
       - name: 'Create GitHub Release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract the version from manifest.json
-          VERSION=$(jq -r .version manifest.json)
-          TAG="v$VERSION"
+          TAG="v$NEW_VERSION"
           
           # Create the release using the GitHub CLI
           # The --generate-notes flag will automatically create release notes
