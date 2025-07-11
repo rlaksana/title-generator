@@ -32,6 +32,7 @@ export interface CachedModels {
 /**
  * Main settings interface for the plugin.
  */
+// Test 3A: Reliability check
 export interface TitleGeneratorSettings {
   // Provider Settings
   aiProvider: AIProvider;
