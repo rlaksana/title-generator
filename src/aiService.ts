@@ -1,32 +1,36 @@
 import { Notice } from 'obsidian';
 import { sanitizeFilename, truncateTitle } from './utils';
-import type { AIProvider, TitleGeneratorSettings } from './types';
+import type { TitleGeneratorSettings } from './types';
 
+/**
+ * A service class to handle all AI-powered title generation logic.
+ * It pulls settings dynamically to ensure it always has the latest values.
+ */
 export class AIService {
-  private settings: TitleGeneratorSettings;
+  /**
+   * A function that returns the current plugin settings.
+   */
+  private getSettings: () => TitleGeneratorSettings;
 
-  constructor(settings: TitleGeneratorSettings) {
-    this.settings = settings;
-  }
-
-  public updateSettings(newSettings: TitleGeneratorSettings): void {
-    this.settings = newSettings;
+  constructor(getSettings: () => TitleGeneratorSettings) {
+    this.getSettings = getSettings;
   }
 
   public async generateTitle(noteContent: string): Promise<string> {
-    const content = noteContent.slice(0, this.settings.maxContentLength);
-    const initialPrompt = this.settings.customPrompt.replace(
+    const settings = this.getSettings();
+    const content = noteContent.slice(0, settings.maxContentLength);
+    const initialPrompt = settings.customPrompt.replace(
       '{max_length}',
-      this.settings.maxTitleLength.toString()
+      settings.maxTitleLength.toString()
     );
 
     try {
       let title = await this.callAI(initialPrompt, content);
 
-      if (title.length > this.settings.maxTitleLength) {
+      if (title.length > settings.maxTitleLength) {
         new Notice('Initial title was too long. Refining...');
-        const refinePrompt = this.settings.refinePrompt
-          .replace('{max_length}', this.settings.maxTitleLength.toString())
+        const refinePrompt = settings.refinePrompt
+          .replace('{max_length}', settings.maxTitleLength.toString())
           .replace('{title}', title);
         
         title = await this.callAI(refinePrompt, ''); // No additional content needed
@@ -34,15 +38,15 @@ export class AIService {
 
       // Final processing
       let processedTitle = title;
-      if (this.settings.lowerCaseTitles) {
+      if (settings.lowerCaseTitles) {
         processedTitle = processedTitle.toLowerCase();
       }
-      if (this.settings.removeForbiddenChars) {
+      if (settings.removeForbiddenChars) {
         processedTitle = sanitizeFilename(processedTitle);
       }
       
       // Final safeguard truncation
-      return truncateTitle(processedTitle, this.settings.maxTitleLength);
+      return truncateTitle(processedTitle, settings.maxTitleLength);
 
     } catch (error) {
       console.error('Title Generation Error:', error);
@@ -52,9 +56,10 @@ export class AIService {
   }
 
   private async callAI(prompt: string, content: string): Promise<string> {
+    const settings = this.getSettings();
     const fullPrompt = `${prompt}\n\n${content}`.trim();
 
-    switch (this.settings.aiProvider) {
+    switch (settings.aiProvider) {
       case 'openai':
         return this.callOpenAI(fullPrompt);
       case 'anthropic':
@@ -69,20 +74,21 @@ export class AIService {
   }
 
   private async callOpenAI(prompt: string): Promise<string> {
-    if (!this.settings.openAiApiKey) {
+    const settings = this.getSettings();
+    if (!settings.openAiApiKey) {
       throw new Error('OpenAI API key is not set.');
     }
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.settings.openAiApiKey}`,
+        'Authorization': `Bearer ${settings.openAiApiKey}`,
       },
       body: JSON.stringify({
-        model: this.settings.openAiModel,
+        model: settings.openAiModel,
         messages: [{ role: 'user', content: prompt }],
-        temperature: this.settings.temperature,
-        max_tokens: this.settings.maxTitleLength + 50,
+        temperature: settings.temperature,
+        max_tokens: settings.maxTitleLength + 50,
       }),
     });
 
@@ -95,21 +101,22 @@ export class AIService {
   }
 
   private async callAnthropic(prompt: string): Promise<string> {
-    if (!this.settings.anthropicApiKey) {
+    const settings = this.getSettings();
+    if (!settings.anthropicApiKey) {
       throw new Error('Anthropic API key is not set.');
     }
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.settings.anthropicApiKey,
+        'x-api-key': settings.anthropicApiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: this.settings.anthropicModel,
+        model: settings.anthropicModel,
         messages: [{ role: 'user', content: prompt }],
-        temperature: this.settings.temperature,
-        max_tokens: this.settings.maxTitleLength + 50,
+        temperature: settings.temperature,
+        max_tokens: settings.maxTitleLength + 50,
       }),
     });
 
@@ -122,18 +129,19 @@ export class AIService {
   }
 
   private async callGoogle(prompt: string): Promise<string> {
-    if (!this.settings.googleApiKey) {
+    const settings = this.getSettings();
+    if (!settings.googleApiKey) {
       throw new Error('Google Gemini API key is not set.');
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.settings.googleModel}:generateContent?key=${this.settings.googleApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: this.settings.temperature,
-          maxOutputTokens: this.settings.maxTitleLength + 50,
+          temperature: settings.temperature,
+          maxOutputTokens: settings.maxTitleLength + 50,
         },
       }),
     });
@@ -147,17 +155,18 @@ export class AIService {
   }
 
   private async callOllama(prompt: string): Promise<string> {
-    const url = new URL('/api/generate', this.settings.ollamaUrl).toString();
+    const settings = this.getSettings();
+    const url = new URL('/api/generate', settings.ollamaUrl).toString();
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: this.settings.ollamaModel,
+        model: settings.ollamaModel,
         prompt,
         stream: false,
         options: {
-          temperature: this.settings.temperature,
-          num_predict: this.settings.maxTitleLength + 50,
+          temperature: settings.temperature,
+          num_predict: settings.maxTitleLength + 50,
         },
       }),
     });

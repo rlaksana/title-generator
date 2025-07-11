@@ -18,7 +18,8 @@ export default class TitleGeneratorPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
-    this.aiService = new AIService(this.settings);
+    // The AI service is now given a function to get the latest settings dynamically.
+    this.aiService = new AIService(() => this.settings);
 
     this.addCommand({
       id: 'generate-title',
@@ -65,10 +66,8 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async saveSettings() {
+    // Now, we only need to save the data. The service will get it automatically.
     await this.saveData(this.settings);
-    if (this.aiService) {
-      this.aiService.updateSettings(this.settings);
-    }
   }
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
