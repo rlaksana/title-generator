@@ -230,7 +230,21 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // API Key or Ollama URL
     if (providerInfo.requiresApiKey) {
-      const keyName = `${provider}ApiKey` as keyof TitleGeneratorSettings;
+      let keyName: keyof TitleGeneratorSettings;
+      switch (provider) {
+        case 'openai':
+          keyName = 'openAiApiKey';
+          break;
+        case 'anthropic':
+          keyName = 'anthropicApiKey';
+          break;
+        case 'google':
+          keyName = 'googleApiKey';
+          break;
+        default:
+          return; // Should not happen
+      }
+
       new Setting(containerEl)
         .setName(`${providerInfo.name} API Key`)
         .setDesc(`Your API key for the ${providerInfo.name} service.`)
