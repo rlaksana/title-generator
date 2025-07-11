@@ -254,20 +254,27 @@ export class AIService {
       throw new Error('Google Gemini API key is not set.');
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
+    console.log('[callGoogle] Sending request to:', url);
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: settings.temperature,
+        maxOutputTokens: settings.maxTitleLength + 50,
+      },
+    };
+    console.log('[callGoogle] Request body:', JSON.stringify(requestBody));
+
     const response = await requestUrl({
       url,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: settings.temperature,
-          maxOutputTokens: settings.maxTitleLength + 50,
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
+
+    console.log('[callGoogle] Response status:', response.status);
+    console.log('[callGoogle] Response text:', response.text);
 
     if (response.status !== 200) {
       throw new Error(
@@ -275,7 +282,10 @@ export class AIService {
       );
     }
     const data = response.json;
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    console.log('[callGoogle] Parsed JSON data:', JSON.stringify(data));
+    const result = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    console.log('[callGoogle] Extracted result:', result);
+    return result;
   }
 
   private async callOllama(prompt: string): Promise<string> {
@@ -337,18 +347,26 @@ export class AIService {
   private cleanAIResponse(response: string): string {
     if (!response) return '';
 
-    console.log('Raw AI response:', response);
+    console.log('[cleanAIResponse] Raw AI response:', response);
 
     let cleaned = response.trim();
 
     // Remove XML-style thinking blocks (e.g., <think>...</think>)
-    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    const thinkTagRegex = /<think>[\s\S]*?<\/think>/g;
+    if (thinkTagRegex.test(cleaned)) {
+      console.log('[cleanAIResponse] Found <think> tags, removing them.');
+      cleaned = cleaned.replace(thinkTagRegex, '').trim();
+    }
 
     // Remove common AI thinking patterns (more comprehensive)
-    cleaned = cleaned.replace(
-      /^(Let me think|I need to|Okay,|The user wants|Looking at|Based on|Here's|This|A good title|I'll|I would).*$/gm,
-      ''
-    );
+    const thinkingPatternRegex =
+      /^(Let me think|I need to|Okay,|The user wants|Looking at|Based on|Here's|This|A good title|I'll|I would).*$/gm;
+    if (thinkingPatternRegex.test(cleaned)) {
+      console.log(
+        '[cleanAIResponse] Found common thinking patterns, removing them.'
+      );
+      cleaned = cleaned.replace(thinkingPatternRegex, '');
+    }
 
     // Remove partial sentences and fragments
     cleaned = cleaned.replace(
@@ -382,13 +400,13 @@ export class AIService {
       cleaned.startsWith('s ') ||
       /^(related|mentions|specifically|about)/i.test(cleaned)
     ) {
-      console.log('Poor quality result, trying extraction methods...');
+      console.log('[cleanAIResponse] Poor quality result, trying extraction methods...');
 
       // Look for quoted text first
       const quotedMatch = response.match(/["']([^"]{5,})["']/);
       if (quotedMatch && quotedMatch[1]) {
         cleaned = quotedMatch[1].trim();
-        console.log('Found quoted title:', cleaned);
+        console.log('[cleanAIResponse] Found quoted title:', cleaned);
       } else {
         // Look for complete sentences or phrases that look like titles
         const sentences = response
@@ -409,7 +427,7 @@ export class AIService {
               .trim();
             if (candidate.length >= 5 && candidate.length <= 80) {
               cleaned = candidate;
-              console.log('Found sentence title:', cleaned);
+              console.log('[cleanAIResponse] Found sentence title:', cleaned);
               break;
             }
           }
@@ -420,7 +438,7 @@ export class AIService {
           const words = response.split(/\s+/).filter((w) => w.length > 2);
           if (words.length >= 3) {
             cleaned = words.slice(0, 8).join(' '); // Take first 8 meaningful words
-            console.log('Fallback word extraction:', cleaned);
+            console.log('[cleanAIResponse] Fallback word extraction:', cleaned);
           }
         }
       }
@@ -434,7 +452,7 @@ export class AIService {
     cleaned = cleaned.replace(/[-\s]*$/g, '');
     cleaned = cleaned.trim();
 
-    console.log('Final cleaned title:', cleaned);
+    console.log('[cleanAIResponse] Final cleaned title:', cleaned);
     return cleaned;
   }
 }
