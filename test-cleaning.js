@@ -1,52 +1,6 @@
 #!/usr/bin/env node
 
-// Quick test script for improved title generation
-const { AIServiceTester } = require('./test-cli.js');
-
-async function testTitleGeneration() {
-  console.log('🧪 Testing improved title generation...\n');
-  
-  const tester = new AIServiceTester();
-  
-  // Test cases
-  const testCases = [
-    {
-      content: 'This is a comprehensive guide about how to set up and configure LM Studio for local AI model inference. We will cover installation, model loading, server configuration, and troubleshooting common issues.',
-      expected: 'Short, descriptive title'
-    },
-    {
-      content: 'Let me think about this problem. The user wants a solution for managing their productivity. Looking at the requirements, I need to create a system that helps with task management and time tracking.',
-      expected: 'Clean title without thinking process'
-    }
-  ];
-  
-  for (let i = 0; i < testCases.length; i++) {
-    const testCase = testCases[i];
-    console.log(`Test ${i + 1}: ${testCase.expected}`);
-    console.log(`Content: ${testCase.content.substring(0, 100)}...`);
-    
-    try {
-      const title = await tester.testLMStudioGeneration(
-        'http://192.168.68.145:1234',
-        'llama-3',
-        `Create a concise title for this text. Respond with ONLY the title - no explanations, quotes, or extra text. Maximum 60 characters.\n\n${testCase.content}`
-      );
-      
-      console.log(`✅ Generated title: "${title}"`);
-      console.log(`   Length: ${title.length} characters`);
-      
-      // Test clean response function
-      const cleaned = cleanAIResponse(title);
-      console.log(`   Cleaned: "${cleaned}"`);
-      console.log(`   Cleaned length: ${cleaned.length} characters\n`);
-      
-    } catch (error) {
-      console.error(`❌ Error: ${error.message}\n`);
-    }
-  }
-}
-
-// Copy of the cleanAIResponse function for testing
+// Test the cleaning function with problematic responses
 function cleanAIResponse(response) {
   if (!response) return '';
   
@@ -123,6 +77,23 @@ function cleanAIResponse(response) {
   return cleaned;
 }
 
-if (require.main === module) {
-  testTitleGeneration().catch(console.error);
-}
+// Test cases
+const testCases = [
+  's related to DeepSeek-R1 model- Specifically mentions',
+  'Related to AI model configuration and setup',
+  '"DeepSeek-R1 Configuration Guide"',
+  'Here\'s a title: AI Model Setup Tutorial',
+  'Based on the content, I would suggest: "Model Configuration"',
+  'Let me think about this. The content is about DeepSeek-R1, so a good title would be "DeepSeek-R1 Setup Guide"'
+];
+
+console.log('🧪 Testing AI response cleaning...\n');
+
+testCases.forEach((testCase, index) => {
+  console.log(`\n=== Test ${index + 1} ===`);
+  const result = cleanAIResponse(testCase);
+  console.log(`Input: "${testCase}"`);
+  console.log(`Output: "${result}"`);
+  console.log(`Length: ${result.length} characters`);
+  console.log('---');
+});
