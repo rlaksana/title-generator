@@ -56,33 +56,20 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    let loadedData = (await this.loadData()) || {};
+
+    // Migration for a typo in a previous version
+    if (loadedData.openaiModel && !loadedData.openAiModel) {
+      console.log('Migrating old setting `openaiModel` to `openAiModel`');
+      loadedData.openAiModel = loadedData.openaiModel;
+      delete loadedData.openaiModel;
+    }
+
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
   }
 
   async saveSettings() {
-    // 1. Save the current settings.
     await this.saveData(this.settings);
-
-    // 2. Immediately load the data back from disk.
-    const loadedData = await this.loadData();
-
-    // 3. Verify that the saved setting matches the value in memory.
-    // We focus on openAiModel as it's the primary issue.
-    if (
-      loadedData &&
-      this.settings.openAiModel !== loadedData.openAiModel
-    ) {
-      new Notice(
-        'Critical Error: Settings failed to save to disk. Please report this issue on GitHub.',
-        15000
-      );
-      console.error('SETTINGS SAVE FAILURE:', {
-        inMemory: this.settings.openAiModel,
-        onDisk: loadedData.openAiModel,
-        fullSettings: this.settings,
-        fullLoadedData: loadedData,
-      });
-    }
   }
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
