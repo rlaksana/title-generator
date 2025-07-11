@@ -1,7 +1,7 @@
 {
   "id": "enhanced-title-generator",
   "name": "Enhanced Title Generator",
-  "version": "2.0.0-beta",
+  "version": "3.0.10-beta",
   "minAppVersion": "0.15.0",
   "description": "Generate titles using multiple AI providers with smart filename handling (beta)",
   "author": "Richard Laksana",
