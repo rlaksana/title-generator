@@ -90,20 +90,9 @@ function extractPort(url: string): string | null {
  * Check if running in WSL environment
  */
 function isWSL(): boolean {
-  // Simple heuristic - check if we're in a Linux environment with WSL indicators
-  if (typeof process !== 'undefined' && process.platform === 'linux') {
-    try {
-      // Common WSL indicators
-      const userAgent = navigator.userAgent || '';
-      return userAgent.includes('WSL') || 
-             userAgent.includes('Microsoft') ||
-             process.env.WSL_DISTRO_NAME !== undefined ||
-             process.env.WSLENV !== undefined;
-    } catch {
-      return false;
-    }
-  }
-  return false;
+  // In browser environment, we can't detect WSL reliably
+  // Always return true to try WSL host IPs as fallback
+  return true;
 }
 
 /**

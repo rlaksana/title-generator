@@ -257,8 +257,8 @@ export class ModelService {
       
       // More specific error handling for LM Studio
       if (error.message.includes('fetch')) {
-        const isWSL = process.platform === 'linux' && (process.env.WSL_DISTRO_NAME || process.env.WSLENV);
-        const wslTip = isWSL ? ' If you\'re using WSL, try using the Windows host IP instead of localhost.' : '';
+        // Note: WSL detection not available in browser environment
+        const wslTip = ' If you\'re using WSL, try using the Windows host IP instead of localhost.';
         
         throw new Error(`Cannot connect to LM Studio server. Please ensure: 1) LM Studio is running, 2) Server is started, 3) A model is loaded, 4) URL is correct (default: http://127.0.0.1:1234).${wslTip}`);
       }
