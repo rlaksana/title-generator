@@ -90,8 +90,14 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add manifest.json package.json versions.json dist/manifest.json dist/versions.json
-          git commit -m "Auto-increment version to $RELEASE_VERSION [skip ci]" || exit 0
-          git push
+          
+          # Skip husky hooks since they're not needed for version bumps
+          if git commit -m "Auto-increment version to $RELEASE_VERSION [skip ci]" --no-verify; then
+            echo "Version commit successful"
+            git push
+          else
+            echo "Version commit failed, but continuing with release..."
+          fi
 
       - name: 'Verify Assets Exist'
         run: |
