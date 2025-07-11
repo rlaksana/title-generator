@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
+// Test 2: Consistency validation
 import type { AIProvider, TitleGeneratorSettings } from './types';
 import type TitleGeneratorPlugin from './main';
 import { ModelService } from './modelService';
