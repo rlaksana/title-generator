@@ -19,11 +19,13 @@ function copyFile(source, destination) {
 
 const prod = (process.argv[2] === "production");
 
+const outdir = "dist";
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
-	entryPoints: ["main.ts"],
+	entryPoints: ["src/main.ts"],
 	bundle: true,
 	external: [
 		"obsidian",
@@ -45,14 +47,19 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outdir: outdir,
+	mainFields: ["browser", "module", "main"],
 });
 
 if (prod) {
 	await context.rebuild();
+	// Ensure the output directory exists
+	if (!fs.existsSync(outdir)) {
+		fs.mkdirSync(outdir);
+	}
 	// Copy manifest.json and versions.json to the output directory
-	copyFile("manifest.json", "manifest.json");
-	copyFile("versions.json", "versions.json");
+	copyFile("manifest.json", path.join(outdir, "manifest.json"));
+	copyFile("versions.json", path.join(outdir, "versions.json"));
 	process.exit(0);
 } else {
 	await context.watch();

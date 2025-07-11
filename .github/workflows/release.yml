@@ -1,0 +1,43 @@
+# This GitHub Actions workflow automates the process of creating a new release.
+# It is triggered automatically on every push to the 'main' branch.
+
+name: 'Automatic Release'
+
+on:
+  push:
+    branches:
+      - main # Or 'master', depending on your repository's default branch
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+
+      - name: 'Set up Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 'Install Dependencies'
+        run: npm install --legacy-peer-deps
+
+      - name: 'Build Plugin'
+        run: npm run build
+
+      - name: 'Create GitHub Release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract the version from manifest.json
+          VERSION=$(jq -r .version manifest.json)
+          TAG="v$VERSION"
+          
+          # Create the release using the GitHub CLI
+          # The --generate-notes flag will automatically create release notes
+          # from the titles of the pull requests included in the push.
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --generate-notes \
+            dist/main.js dist/manifest.json
