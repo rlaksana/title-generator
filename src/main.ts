@@ -60,12 +60,9 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async saveSettings() {
-    // Create a deep copy to ensure no reference issues
-    const settingsToSave = JSON.parse(JSON.stringify(this.settings));
-    console.log('Attempting to save settings:', JSON.stringify(settingsToSave));
-    await this.saveData(settingsToSave);
-    console.log('Save operation completed.');
+    await this.saveData(this.settings);
   }
+}
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
     const activeFile = this.app.workspace.getActiveFile();
