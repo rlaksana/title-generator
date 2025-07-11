@@ -257,7 +257,9 @@ export class AIService {
     const response = await requestUrl({
       url,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -273,7 +275,7 @@ export class AIService {
       );
     }
     const data = response.json;
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   }
 
   private async callOllama(prompt: string): Promise<string> {
@@ -338,6 +340,9 @@ export class AIService {
     console.log('Raw AI response:', response);
 
     let cleaned = response.trim();
+
+    // Remove XML-style thinking blocks (e.g., <think>...</think>)
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
     // Remove common AI thinking patterns (more comprehensive)
     cleaned = cleaned.replace(
