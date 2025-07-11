@@ -284,10 +284,6 @@ export class AIService {
       !data.candidates[0].content.parts ||
       !data.candidates[0].content.parts[0]
     ) {
-      console.error(
-        '[callGoogle] Invalid response structure from Gemini:',
-        data
-      );
       return '';
     }
 
@@ -356,30 +352,23 @@ export class AIService {
 
     let cleaned = response.trim();
 
-    // Remove XML-style thinking blocks (e.g., <think>...</think>)
-    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-    // Remove common AI thinking patterns (more comprehensive)
-    cleaned = cleaned.replace(
-      /^(Let me think|I need to|Okay,|The user wants|Looking at|Based on|Here's|This|A good title|I'll|I would).*$/gm,
-      ''
-    );
-
-    // Remove partial sentences and fragments
-    cleaned = cleaned.replace(
-      /^(s related to|related to|mentions|specifically|about|regarding).*$/gi,
-      ''
-    );
-
-    // Remove explanations in parentheses or brackets
-    cleaned = cleaned.replace(/\([^)]*\)/g, '');
-    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
+    // Recursively remove thinking blocks and re-clean the content inside them
+    const thinkMatch = cleaned.match(/<think>([\s\S]*?)<\/think>/);
+    if (thinkMatch && thinkMatch[1]) {
+      const innerContent = thinkMatch[1].trim();
+      const cleanedInner = this.cleanAIResponse(innerContent); // Recursive call
+      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, cleanedInner).trim();
+    }
 
     // Remove common prefixes
     cleaned = cleaned.replace(
       /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:)\s*/i,
       ''
     );
+
+    // Remove explanations in parentheses or brackets
+    cleaned = cleaned.replace(/\([^)]*\)/g, '');
+    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
 
     // Remove trailing fragments like dashes and incomplete words
     cleaned = cleaned.replace(/[-\s]*$/g, '');
@@ -388,60 +377,10 @@ export class AIService {
     // Take only the first line (in case there are multiple lines)
     cleaned = cleaned.split('\n')[0];
 
+    // Remove quotes
+    cleaned = cleaned.replace(/["']/g, '');
+
     // Remove extra whitespace
-    cleaned = cleaned.trim();
-
-    // If result is too short, malformed, or contains fragments, try to extract better title
-    if (
-      cleaned.length < 3 ||
-      cleaned.startsWith('s ') ||
-      /^(related|mentions|specifically|about)/i.test(cleaned)
-    ) {
-      // Look for quoted text first
-      const quotedMatch = response.match(/["']([^"]{5,})["']/);
-      if (quotedMatch && quotedMatch[1]) {
-        cleaned = quotedMatch[1].trim();
-      } else {
-        // Look for complete sentences or phrases that look like titles
-        const sentences = response
-          .split(/[.!?]/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 5);
-
-        for (const sentence of sentences) {
-          // Skip thinking sentences
-          if (
-            !/^(Let me|I need|Okay|The user|Looking|Based|Here's|This|s related)/i.test(
-              sentence
-            )
-          ) {
-            // Clean the sentence
-            let candidate = sentence
-              .replace(/^(Title:|Generated title:|Suggested title:)\s*/i, '')
-              .trim();
-            if (candidate.length >= 5 && candidate.length <= 80) {
-              cleaned = candidate;
-              break;
-            }
-          }
-        }
-
-        // If still poor, try to extract the most substantial part
-        if (cleaned.length < 5) {
-          const words = response.split(/\s+/).filter((w) => w.length > 2);
-          if (words.length >= 3) {
-            cleaned = words.slice(0, 8).join(' '); // Take first 8 meaningful words
-          }
-        }
-      }
-    }
-
-    // Final cleanup
-    cleaned = cleaned.replace(
-      /^(s |related to |mentions |specifically |about )/i,
-      ''
-    );
-    cleaned = cleaned.replace(/[-\s]*$/g, '');
     cleaned = cleaned.trim();
 
     return cleaned;
