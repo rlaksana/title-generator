@@ -392,7 +392,27 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     dropdown.setDisabled(false);
 
     const availableModels = await this.modelService.getModels(provider);
-    const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
+
+    let modelName: keyof TitleGeneratorSettings;
+    switch (provider) {
+      case 'openai':
+        modelName = 'openAiModel';
+        break;
+      case 'anthropic':
+        modelName = 'anthropicModel';
+        break;
+      case 'google':
+        modelName = 'googleModel';
+        break;
+      case 'ollama':
+        modelName = 'ollamaModel';
+        break;
+      case 'lmstudio':
+        modelName = 'lmstudioModel';
+        break;
+      default:
+        return; // Should not happen
+    }
 
     // Ensure the currently saved model is always in the list,
     // even if the cache is stale. This prevents the selection from disappearing.
