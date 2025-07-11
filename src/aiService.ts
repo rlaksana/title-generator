@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 import { sanitizeFilename, truncateTitle } from './utils';
 import type { TitleGeneratorSettings } from './types';
 
@@ -196,7 +196,8 @@ export class AIService {
     if (!settings.openAiApiKey) {
       throw new Error('OpenAI API key is not set.');
     }
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await requestUrl({
+      url: 'https://api.openai.com/v1/chat/completions',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -210,11 +211,10 @@ export class AIService {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
+    if (response.status !== 200) {
+      throw new Error(`OpenAI API error (${response.status}): ${response.text}`);
     }
-    const data = await response.json();
+    const data = response.json;
     return data.choices[0]?.message?.content?.trim() ?? '';
   }
 
@@ -223,7 +223,8 @@ export class AIService {
     if (!settings.anthropicApiKey) {
       throw new Error('Anthropic API key is not set.');
     }
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await requestUrl({
+      url: 'https://api.anthropic.com/v1/messages',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -238,11 +239,12 @@ export class AIService {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
+    if (response.status !== 200) {
+      throw new Error(
+        `Anthropic API error (${response.status}): ${response.text}`
+      );
     }
-    const data = await response.json();
+    const data = response.json;
     return data.content[0]?.text?.trim() ?? '';
   }
 
@@ -252,7 +254,8 @@ export class AIService {
       throw new Error('Google Gemini API key is not set.');
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
-    const response = await fetch(url, {
+    const response = await requestUrl({
+      url,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -264,20 +267,20 @@ export class AIService {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
+    if (response.status !== 200) {
       throw new Error(
-        `Google Gemini API error (${response.status}): ${errorBody}`
+        `Google Gemini API error (${response.status}): ${response.text}`
       );
     }
-    const data = await response.json();
+    const data = response.json;
     return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   }
 
   private async callOllama(prompt: string): Promise<string> {
     const settings = this.getSettings();
     const url = new URL('/api/generate', settings.ollamaUrl).toString();
-    const response = await fetch(url, {
+    const response = await requestUrl({
+      url,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -291,11 +294,10 @@ export class AIService {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Ollama API error (${response.status}): ${errorBody}`);
+    if (response.status !== 200) {
+      throw new Error(`Ollama API error (${response.status}): ${response.text}`);
     }
-    const data = await response.json();
+    const data = response.json;
     return data.response?.trim() ?? '';
   }
 
@@ -305,7 +307,8 @@ export class AIService {
       '/v1/chat/completions',
       settings.lmstudioUrl
     ).toString();
-    const response = await fetch(url, {
+    const response = await requestUrl({
+      url,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -317,11 +320,12 @@ export class AIService {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`LM Studio API error (${response.status}): ${errorBody}`);
+    if (response.status !== 200) {
+      throw new Error(
+        `LM Studio API error (${response.status}): ${response.text}`
+      );
     }
-    const data = await response.json();
+    const data = response.json;
     return data.choices[0]?.message?.content?.trim() ?? '';
   }
 
@@ -376,7 +380,7 @@ export class AIService {
       console.log('Poor quality result, trying extraction methods...');
 
       // Look for quoted text first
-      const quotedMatch = response.match(/["']([^"']{5,})["']/);
+      const quotedMatch = response.match(/["']([^"]{5,})["']/);
       if (quotedMatch && quotedMatch[1]) {
         cleaned = quotedMatch[1].trim();
         console.log('Found quoted title:', cleaned);
