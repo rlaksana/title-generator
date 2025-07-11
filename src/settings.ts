@@ -323,9 +323,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     }
 
     const currentModel = this.plugin.settings[modelName] as string;
-    console.log(
-      `[renderModelSelection] For provider ${provider}, currentModel from settings is: "${currentModel}"`
-    );
     const isLoading = this.modelService.isLoading(provider);
     const cachedInfo = this.modelService.getCachedInfo(provider);
 
@@ -383,7 +380,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     currentModel: string,
     isLoading: boolean
   ): Promise<void> {
-    console.log(`[populateModelDropdown] Received currentModel: "${currentModel}"`);
     dropdown.selectEl.empty();
 
     if (isLoading) {
@@ -396,24 +392,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     dropdown.setDisabled(false);
 
     const availableModels = await this.modelService.getModels(provider);
-    console.log(
-      `[populateModelDropdown] Models from cache: [${availableModels.join(', ')}]`
-    );
     const modelName = `${provider}Model` as keyof TitleGeneratorSettings;
 
     // Ensure the currently saved model is always in the list,
     // even if the cache is stale. This prevents the selection from disappearing.
     if (currentModel && !availableModels.includes(currentModel)) {
-      console.log(
-        `[populateModelDropdown] currentModel "${currentModel}" not in cache. Adding it.`
-      );
       availableModels.unshift(currentModel);
     }
-    console.log(
-      `[populateModelDropdown] Final availableModels: [${availableModels.join(
-        ', '
-      )}]`
-    );
 
     if (availableModels.length === 0) {
       const cachedInfo = this.modelService.getCachedInfo(provider);
@@ -443,21 +428,19 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Set current value if it's valid, otherwise use placeholder
     if (currentModel && availableModels.includes(currentModel)) {
-      console.log(
-        `[populateModelDropdown] Setting dropdown value to: "${currentModel}"`
-      );
       dropdown.setValue(currentModel);
     } else {
-      console.log(
-        `[populateModelDropdown] Setting dropdown value to placeholder (empty string)`
-      );
       dropdown.setValue('');
     }
 
     // Set change handler
     dropdown.onChange(async (value: string) => {
+      console.log(`[onChange] User selected model: "${value}". Saving...`);
       (this.plugin.settings as any)[modelName] = value;
       await this.plugin.saveSettings();
+      console.log(
+        `[onChange] Save complete. Current value in settings object: "${this.plugin.settings[modelName]}"`
+      );
     });
   }
 

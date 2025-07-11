@@ -56,7 +56,10 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedData = await this.loadData();
+    console.log('Loaded data from Obsidian:', JSON.stringify(loadedData));
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+    console.log('Final settings object:', JSON.stringify(this.settings));
   }
 
   async saveSettings() {
