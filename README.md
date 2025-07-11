@@ -1,6 +1,6 @@
 # Enhanced Title Generator v3.0
 
-> **Latest Update**: Seamless git automation with hooks enabled for frictionless development workflow.
+> **Latest Update**: Auto version bump enabled - every commit/push increments version automatically.
 
 A completely rewritten Obsidian plugin to generate note titles using multiple AI providers. This new version is built for stability, efficiency, and intelligence, with guaranteed compatibility on both Desktop and Mobile (Android/iOS).
 
