@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
 export class TitleGeneratorSettingTab extends PluginSettingTab {
   plugin: TitleGeneratorPlugin;
   modelService: ModelService;
+  private hasInitiallyLoaded = false;
 
   constructor(app: App, plugin: TitleGeneratorPlugin) {
     super(app, plugin);
@@ -77,9 +78,24 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     );
   }
 
+  onClose() {
+    super.onClose();
+    this.hasInitiallyLoaded = false;
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+
+    // Trigger a one-time model load when the tab is first displayed.
+    // This ensures the model list is populated before the user sees it.
+    if (!this.hasInitiallyLoaded) {
+      this.hasInitiallyLoaded = true;
+      this.autoLoadModelsForProvider(this.plugin.settings.aiProvider);
+      // Return early to prevent rendering an incomplete UI.
+      // autoLoadModelsForProvider will call display() again once models are loaded.
+      return;
+    }
 
     containerEl.createEl('h2', { text: 'Enhanced Title Generator Settings' });
 
