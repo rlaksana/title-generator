@@ -60,8 +60,11 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    // Force a deep copy of the settings object to ensure that Obsidian's
+    // saveData function detects a change and writes it to disk.
+    await this.saveData(JSON.parse(JSON.stringify(this.settings)));
   }
+}
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
     const activeFile = this.app.workspace.getActiveFile();
