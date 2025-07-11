@@ -240,12 +240,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           text
             .setValue(this.plugin.settings[keyName] as string)
             .onChange(async (value) => {
-              const oldValue = this.plugin.settings[keyName] as string;
               (this.plugin.settings as any)[keyName] = value;
               await this.plugin.saveSettings();
 
               // Auto-reload models if API key changed and is now valid
-              if (oldValue !== value && value.trim()) {
+              if (value.trim()) {
                 await this.autoReloadModels(provider);
               }
             });

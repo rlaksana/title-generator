@@ -106,14 +106,19 @@ export class ModelService {
   private async queryOpenAIModels(
     settings: TitleGeneratorSettings
   ): Promise<string[]> {
-    if (!settings.openAiApiKey.trim()) {
+    const apiKey = settings.openAiApiKey;
+    console.log(
+      `Querying OpenAI models. API Key present: ${!!apiKey}. Key starts with: ${apiKey.slice(0, 5)}...`
+    );
+
+    if (!apiKey.trim()) {
       throw new Error('OpenAI API key not set');
     }
 
     try {
       const response = await fetch('https://api.openai.com/v1/models', {
         headers: {
-          Authorization: `Bearer ${settings.openAiApiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(10000), // 10 second timeout
