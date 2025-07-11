@@ -1,6 +1,6 @@
 {
   "name": "obsidian-enhanced-title-generator",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "main": "dist/main.js",
   "engines": {
