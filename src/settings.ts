@@ -41,6 +41,8 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   // Title
   lowerCaseTitles: false,
   removeForbiddenChars: true,
+  /** Enable detailed console log output for debugging */
+  debugMode: false,
 
   // Prompt and Content
   customPrompt:
@@ -98,6 +100,18 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.removeForbiddenChars)
           .onChange(async (value) => {
             this.plugin.settings.removeForbiddenChars = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Debug mode')
+      .setDesc('Enable detailed console logging for troubleshooting.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.debugMode)
+          .onChange(async (value) => {
+            this.plugin.settings.debugMode = value;
             await this.plugin.saveSettings();
           });
       });

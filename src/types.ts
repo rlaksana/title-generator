@@ -48,6 +48,8 @@ export interface TitleGeneratorSettings {
   // Title Settings
   lowerCaseTitles: boolean;
   removeForbiddenChars: boolean;
+  /** Enable detailed debug logging for troubleshooting */
+  debugMode: boolean;
 
   // Prompt and Content Settings
   customPrompt: string;

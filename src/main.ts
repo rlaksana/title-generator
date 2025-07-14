@@ -54,7 +54,7 @@ export default class TitleGeneratorPlugin extends Plugin {
     );
 
     this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
-    console.log('Enhanced Title Generator plugin loaded.');
+    if (this.settings.debugMode) console.log('Enhanced Title Generator plugin loaded.');
   }
 
   async loadSettings() {
@@ -62,7 +62,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
     // Migration for a typo in a previous version
     if (loadedData.openaiModel && !loadedData.openAiModel) {
-      console.log('Migrating old setting `openaiModel` to `openAiModel`');
+          if ((loadedData as any).debugMode) console.log('Migrating old setting `openaiModel` to `openAiModel`');
       loadedData.openAiModel = loadedData.openaiModel;
       delete loadedData.openaiModel;
     }
