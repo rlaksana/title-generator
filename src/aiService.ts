@@ -188,7 +188,7 @@ export class AIService {
         model: settings.openAiModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: settings.temperature,
-        max_tokens: settings.maxTitleLength + 50,
+        max_tokens: settings.maxTitleLength,
       }),
     });
 
@@ -216,7 +216,7 @@ export class AIService {
         model: settings.anthropicModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: settings.temperature,
-        max_tokens: settings.maxTitleLength + 50,
+        max_tokens: settings.maxTitleLength,
       }),
     });
 
@@ -240,7 +240,7 @@ export class AIService {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: settings.temperature,
-        maxOutputTokens: settings.maxTitleLength + 50,
+        maxOutputTokens: settings.maxTitleLength + 256,
       },
     };
 
