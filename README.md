@@ -1,6 +1,6 @@
-# Enhanced Title Generator v3.0
+# Enhanced Title Generator v3.0.10
 
-> **Latest Update**: Auto version bump enabled - every commit/push increments version automatically.
+> **Latest Update**: Auto version bump enabled - every commit/push increments version automatically. Added **Debug Mode** toggle for troubleshooting logs.
 
 A completely rewritten Obsidian plugin to generate note titles using multiple AI providers. This new version is built for stability, efficiency, and intelligence, with guaranteed compatibility on both Desktop and Mobile (Android/iOS).
 
@@ -14,6 +14,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 - **Mobile-First Design**: All API calls use Obsidian's native `fetch` API, ensuring 100% compatibility on mobile devices and removing heavy dependencies.
 - **Fully Customizable Prompts**: Tailor the initial prompt and the refinement prompt to fit your exact needs.
 - **Smart Filename Sanitization**: Automatically removes OS-forbidden characters and normalizes whitespace to create safe, clean filenames.
+- **Debug Mode**: Enable detailed console logging for troubleshooting.
 
 ## Installation
 
@@ -47,6 +48,7 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 | **Max Content Length for AI**| The maximum number of characters from the note to send to the AI to save on costs.                      | `2000`                                                                                                 |
 | **Lower-case titles**        | If enabled, converts all titles to lower case.                                                          | `false`                                                                                                |
 | **Remove forbidden chars**   | If enabled, strips characters that are invalid in filenames.                                            | `true`                                                                                                 |
+| **Debug mode**               | Enable detailed console logging for troubleshooting.                                                    | `false`                                                                                                |
 
 ## Dynamic Model Loading
 

@@ -1,15 +1,16 @@
-# Upgrade Guide: v1.x → v2.0
+# Upgrade Guide: v2.0 → v3.0.10
 
 This guide walks you through migrating from **Title Generator v1.x** to **Enhanced Title Generator v2.0**.
 
 ---
 
-## 1. What’s New in v2.0
+## 1. What’s New in v3.0
 
 - **Multi-Provider Support**: OpenAI, Anthropic (Claude), and Google Gemini.
 - **Smart Filename Sanitization**: Removes OS-forbidden characters, normalizes whitespace, trims leading/trailing dots & spaces, falls back to `Untitled`.
 - **Configurable Title Length**: Enforce maximum title length (default 200 chars) with word-boundary truncation.
 - **Custom Prompts & Temperature**: Edit the AI prompt and adjust creativity (0.0–1.0).
+- **Debug Mode**: Toggle detailed console logging for troubleshooting.
 - **Model Selection**: Choose a model per provider.
 - **Backward Compatibility**: Your existing OpenAI API key and lowercase‐titles toggle are preserved by default.
 
@@ -65,7 +66,7 @@ This guide walks you through migrating from **Title Generator v1.x** to **Enhanc
 ## 5. Troubleshooting
 
 - **Plugin not loading**:  
-  - Ensure `manifest.json` version is `2.0.0`.  
+  - Ensure `manifest.json` version is `3.0.10`.
   - Run `npm run build` and reload Obsidian.
 
 - **API errors**:  
@@ -85,8 +86,9 @@ This guide walks you through migrating from **Title Generator v1.x** to **Enhanc
 - **Temperature**: 0.7  
 - **Max Title Length**: 200  
 - **Remove Forbidden Characters**: ✔  
-- **Lower-case Titles**: ✘  
+- **Lower-case Titles**: ✘
+- **Debug mode**: ✘
 
 ---
 
-*After completing these steps, your plugin will be upgraded to v2.0.0 with full multi-provider and filename handling features.*
+*After completing these steps, your plugin will be upgraded to v3.0.10 with full multi-provider and filename handling features.*
