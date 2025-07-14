@@ -6,7 +6,7 @@ This guide walks you through migrating from **Title Generator v1.x** to **Enhanc
 
 ## 1. What’s New in v2.0
 
-- **Multi-Provider Support**: OpenAI, Anthropic (Claude), Google Gemini, and local Ollama.
+- **Multi-Provider Support**: OpenAI, Anthropic (Claude), and Google Gemini.
 - **Smart Filename Sanitization**: Removes OS-forbidden characters, normalizes whitespace, trims leading/trailing dots & spaces, falls back to `Untitled`.
 - **Configurable Title Length**: Enforce maximum title length (default 200 chars) with word-boundary truncation.
 - **Custom Prompts & Temperature**: Edit the AI prompt and adjust creativity (0.0–1.0).
@@ -69,8 +69,8 @@ This guide walks you through migrating from **Title Generator v1.x** to **Enhanc
   - Run `npm run build` and reload Obsidian.
 
 - **API errors**:  
-  - Verify each provider’s API key or local Ollama server URL.  
-  - Check network connectivity or local Ollama service status (`http://localhost:11434`).
+  - Verify each provider’s API key.  
+  - Check network connectivity.
 
 - **Invalid filename**:  
   - Confirm **Remove Forbidden Characters** is enabled.  

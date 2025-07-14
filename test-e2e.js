@@ -33,21 +33,7 @@ const mockObsidian = {
       };
     }
 
-    // Simulate LMStudio response issue
-    if (options.url.includes('/v1/chat/completions')) {
-      return {
-        status: 200,
-        json: {
-          choices: [
-            {
-              message: {
-                content: '<think>The user wants a title about cats.</think>A Tale of Two Kitties',
-              },
-            },
-          ],
-        },
-      };
-    }
+    
     
     // Simulate a generic good response for other providers
     return {
@@ -110,10 +96,8 @@ async function runTest(provider) {
     removeForbiddenChars: true,
     // Add dummy keys/urls to pass validation
     googleApiKey: 'test-key',
-    lmstudioUrl: 'http://localhost:1234',
     openAiApiKey: 'test-key',
     anthropicApiKey: 'test-key',
-    ollamaUrl: 'http://localhost:11434',
   };
 
   // The AIService takes a function that returns the current settings.
@@ -144,7 +128,6 @@ async function main() {
   
   // Run tests for the problematic providers
   await runTest('google');
-  await runTest('lmstudio');
   await runTest('openai'); // Test a "good" case
 
   console.log('\n✅ Simulation finished.');

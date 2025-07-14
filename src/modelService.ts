@@ -76,10 +76,6 @@ export class ModelService {
         return this.queryAnthropicModels(settings);
       case 'google':
         return this.queryGoogleModels(settings);
-      case 'ollama':
-        return this.queryOllamaModels(settings);
-      case 'lmstudio':
-        return this.queryLMStudioModels(settings);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -183,63 +179,8 @@ export class ModelService {
       .sort();
   }
 
-  private async queryOllamaModels(
-    settings: TitleGeneratorSettings
-  ): Promise<string[]> {
-    if (!settings.ollamaUrl.trim()) {
-      throw new Error('Ollama URL not set');
-    }
+  
 
-    const response = await requestUrl({
-      url: new URL('/api/tags', settings.ollamaUrl).toString(),
-      method: 'GET',
-    });
-
-    if (response.status !== 200) {
-      throw new Error(`Ollama API error (${response.status}): ${response.text}`);
-    }
-
-    const data = response.json;
-
-    if (!data.models || !Array.isArray(data.models)) {
-      throw new Error('Invalid response format from Ollama API');
-    }
-
-    return data.models
-      .filter((model: any) => model.name)
-      .map((model: any) => model.name)
-      .sort();
-  }
-
-  private async queryLMStudioModels(
-    settings: TitleGeneratorSettings
-  ): Promise<string[]> {
-    if (!settings.lmstudioUrl.trim()) {
-      throw new Error('LM Studio URL not set');
-    }
-
-    const response = await requestUrl({
-      url: new URL('/v1/models', settings.lmstudioUrl).toString(),
-      method: 'GET',
-    });
-
-    if (response.status !== 200) {
-      throw new Error(
-        `LM Studio API error (${response.status}): ${response.text}`
-      );
-    }
-
-    const data = response.json;
-
-    if (!data.data || !Array.isArray(data.data)) {
-      throw new Error('Invalid response format from LM Studio API');
-    }
-
-    return data.data
-      .filter((model: any) => model.id)
-      .map((model: any) => model.id)
-      .sort();
-  }
 
   private async cacheModels(
     provider: AIProvider,

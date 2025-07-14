@@ -20,31 +20,19 @@ export const AI_PROVIDERS: Record<
     name: 'Google Gemini',
     requiresApiKey: true,
   },
-  ollama: {
-    name: 'Ollama',
-    requiresApiKey: false,
-  },
-  lmstudio: {
-    name: 'LM Studio',
-    requiresApiKey: false,
-  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   // Provider
-  aiProvider: 'ollama',
+  aiProvider: 'openai',
   openAiApiKey: '',
   anthropicApiKey: '',
   googleApiKey: '',
-  ollamaUrl: 'http://localhost:11434',
-  lmstudioUrl: 'http://192.168.68.145:1234',
 
   // Models
   openAiModel: '',
   anthropicModel: '',
   googleModel: '',
-  ollamaModel: '',
-  lmstudioModel: '',
 
   // Dynamic Model Caching
   cachedModels: {},
@@ -221,77 +209,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const provider = this.plugin.settings.aiProvider;
     const providerInfo = AI_PROVIDERS[provider];
 
-    // API Key or Ollama URL
-    if (providerInfo.requiresApiKey) {
-      let keyName: keyof TitleGeneratorSettings;
-      switch (provider) {
-        case 'openai':
-          keyName = 'openAiApiKey';
-          break;
-        case 'anthropic':
-          keyName = 'anthropicApiKey';
-          break;
-        case 'google':
-          keyName = 'googleApiKey';
-          break;
-        default:
-          return; // Should not happen
-      }
-
-      new Setting(containerEl)
-        .setName(`${providerInfo.name} API Key`)
-        .setDesc(`Your API key for the ${providerInfo.name} service.`)
-        .addText((text) => {
-          text.inputEl.type = 'password';
-          text.setPlaceholder('Enter your API key');
-          text
-            .setValue(this.plugin.settings[keyName] as string)
-            .onChange(async (value) => {
-              (this.plugin.settings as any)[keyName] = value;
-              await this.plugin.saveSettings();
-            });
-        });
-    } else {
-      // Ollama and LM Studio specific settings
-      if (provider === 'ollama') {
-        this.renderUrlSettingWithConfirmation(
-          containerEl,
-          'ollama',
-          'Ollama Server URL',
-          'The URL of your local Ollama server.',
-          'e.g., http://localhost:11434'
-        );
-      } else if (provider === 'lmstudio') {
-        this.renderUrlSettingWithConfirmation(
-          containerEl,
-          'lmstudio',
-          'LM Studio Server URL',
-          'The URL of your local LM Studio server.',
-          'e.g., http://127.0.0.1:1234 or http://192.168.68.145:1234'
-        );
-
-        // Add LM Studio setup instructions
-        const lmStudioInfo = containerEl.createEl('div', {
-          cls: 'setting-item-description',
-        });
-        lmStudioInfo.innerHTML = `
-          <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px;">
-            <strong>LM Studio Setup:</strong><br>
-            1. Start LM Studio and load a model<br>
-            2. Go to "Local Server" tab<br>
-            3. Enable "CORS" (Cross-Origin Resource Sharing)<br>
-            4. Set port to 1234 (or your preferred port)<br>
-            5. Click "Start Server"<br>
-            <br>
-            <strong>Network Issues:</strong><br>
-            • If using WSL, use Windows host IP (e.g., 192.168.68.145:1234)<br>
-            • If using localhost fails, try your computer's IP address<br>
-            • Ensure firewall allows the connection
-          </div>
-        `;
-      }
-    }
-
     // Model selection with reload button
     this.renderModelSelection(containerEl, provider, providerInfo);
   }
@@ -311,12 +228,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         break;
       case 'google':
         modelName = 'googleModel';
-        break;
-      case 'ollama':
-        modelName = 'ollamaModel';
-        break;
-      case 'lmstudio':
-        modelName = 'lmstudioModel';
         break;
       default:
         return; // Should not happen
@@ -404,12 +315,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       case 'google':
         modelName = 'googleModel';
         break;
-      case 'ollama':
-        modelName = 'ollamaModel';
-        break;
-      case 'lmstudio':
-        modelName = 'lmstudioModel';
-        break;
       default:
         return; // Should not happen
     }
@@ -485,94 +390,10 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return !!settings.anthropicApiKey.trim();
       case 'google':
         return !!settings.googleApiKey.trim();
-      case 'ollama':
-        return !!settings.ollamaUrl.trim();
-      case 'lmstudio':
-        return !!settings.lmstudioUrl.trim();
       default:
         return false;
     }
   }
 
-  private renderUrlSettingWithConfirmation(
-    containerEl: HTMLElement,
-    provider: 'ollama' | 'lmstudio',
-    name: string,
-    description: string,
-    placeholder: string
-  ): void {
-    const urlKey = provider === 'ollama' ? 'ollamaUrl' : 'lmstudioUrl';
-    const currentUrl = this.plugin.settings[urlKey];
-    let tempUrl = currentUrl;
-    let hasUnsavedChanges = false;
-
-    const setting = new Setting(containerEl).setName(name).setDesc(description);
-
-    let textComponent: any;
-    setting.addText((text) => {
-      textComponent = text;
-      text
-        .setPlaceholder(placeholder)
-        .setValue(currentUrl)
-        .onChange((value) => {
-          tempUrl = value;
-          hasUnsavedChanges = value !== currentUrl;
-
-          // Update button states
-          okButton.setDisabled(!hasUnsavedChanges);
-          cancelButton.setDisabled(!hasUnsavedChanges);
-
-          // Visual feedback for unsaved changes
-          if (hasUnsavedChanges) {
-            text.inputEl.style.borderColor = '#ff6b6b';
-          } else {
-            text.inputEl.style.borderColor = '';
-          }
-        });
-    });
-
-    // OK button
-    let okButton: any;
-    setting.addButton((btn) => {
-      okButton = btn;
-      btn
-        .setButtonText('OK')
-        .setDisabled(true)
-        .onClick(async () => {
-          if (!tempUrl.trim()) {
-            return;
-          }
-
-          // Save the URL
-          this.plugin.settings[urlKey] = tempUrl;
-          await this.plugin.saveSettings();
-
-          // Reset state
-          hasUnsavedChanges = false;
-          okButton.setDisabled(true);
-          cancelButton.setDisabled(true);
-          textComponent.inputEl.style.borderColor = '';
-        });
-    });
-
-    // Cancel button
-    let cancelButton: any;
-    setting.addButton((btn) => {
-      cancelButton = btn;
-      btn
-        .setButtonText('Cancel')
-        .setDisabled(true)
-        .onClick(() => {
-          // Reset to saved value
-          tempUrl = currentUrl;
-          textComponent.setValue(currentUrl);
-          hasUnsavedChanges = false;
-
-          // Update button states
-          okButton.setDisabled(true);
-          cancelButton.setDisabled(true);
-          textComponent.inputEl.style.borderColor = '';
-        });
-    });
-  }
+  
 }

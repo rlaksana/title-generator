@@ -23,8 +23,7 @@
     "title",
     "openai",
     "anthropic",
-    "gemini",
-    "ollama"
+    "gemini"
   ],
   "author": "Richard Laksana",
   "license": "MIT",

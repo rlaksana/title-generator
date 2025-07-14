@@ -63,7 +63,7 @@ export class AIService {
       // Provide more helpful error messages
       if (error.message.includes('API key is not set')) {
         new Notice(
-          `Please set your ${settings.aiProvider.toUpperCase()} API key in plugin settings, or switch to Ollama for local generation.`,
+          `Please set your ${settings.aiProvider.toUpperCase()} API key in plugin settings.`,
           8000
         );
       } else if (error.message.includes('API error')) {
@@ -84,7 +84,7 @@ export class AIService {
       case 'openai':
         if (!settings.openAiApiKey.trim()) {
           new Notice(
-            'OpenAI API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.',
+            'OpenAI API key is not set. Please configure it in plugin settings.',
             8000
           );
           return false;
@@ -100,7 +100,7 @@ export class AIService {
       case 'anthropic':
         if (!settings.anthropicApiKey.trim()) {
           new Notice(
-            'Anthropic API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.',
+            'Anthropic API key is not set. Please configure it in plugin settings.',
             8000
           );
           return false;
@@ -116,7 +116,7 @@ export class AIService {
       case 'google':
         if (!settings.googleApiKey.trim()) {
           new Notice(
-            'Google Gemini API key is not set. Please configure it in plugin settings or switch to Ollama for local generation.',
+            'Google Gemini API key is not set. Please configure it in plugin settings.',
             8000
           );
           return false;
@@ -124,38 +124,6 @@ export class AIService {
         if (!settings.googleModel) {
           new Notice(
             'Google Gemini model is not selected. Please select a model in the plugin settings.',
-            8000
-          );
-          return false;
-        }
-        break;
-      case 'ollama':
-        if (!settings.ollamaUrl.trim()) {
-          new Notice(
-            'Ollama server URL is not set. Please configure it in plugin settings.',
-            6000
-          );
-          return false;
-        }
-        if (!settings.ollamaModel) {
-          new Notice(
-            'Ollama model is not selected. Please select a model in the plugin settings.',
-            8000
-          );
-          return false;
-        }
-        break;
-      case 'lmstudio':
-        if (!settings.lmstudioUrl.trim()) {
-          new Notice(
-            'LM Studio server URL is not set. Please configure it in plugin settings.',
-            6000
-          );
-          return false;
-        }
-        if (!settings.lmstudioModel) {
-          new Notice(
-            'LM Studio model is not selected. Please select a model in the plugin settings.',
             8000
           );
           return false;
@@ -182,10 +150,6 @@ export class AIService {
         return this.callAnthropic(fullPrompt);
       case 'google':
         return this.callGoogle(fullPrompt);
-      case 'ollama':
-        return this.callOllama(fullPrompt);
-      case 'lmstudio':
-        return this.callLMStudio(fullPrompt);
       default:
         throw new Error('Unsupported AI provider selected.');
     }
@@ -289,58 +253,8 @@ export class AIService {
     return data.candidates[0].content.parts[0].text.trim() ?? '';
   }
 
-  private async callOllama(prompt: string): Promise<string> {
-    const settings = this.getSettings();
-    const url = new URL('/api/generate', settings.ollamaUrl).toString();
-    const response = await requestUrl({
-      url,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: settings.ollamaModel,
-        prompt,
-        stream: false,
-        options: {
-          temperature: settings.temperature,
-          num_predict: settings.maxTitleLength + 50,
-        },
-      }),
-    });
+  
 
-    if (response.status !== 200) {
-      throw new Error(`Ollama API error (${response.status}): ${response.text}`);
-    }
-    const data = response.json;
-    return data.response?.trim() ?? '';
-  }
-
-  private async callLMStudio(prompt: string): Promise<string> {
-    const settings = this.getSettings();
-    const url = new URL(
-      '/v1/chat/completions',
-      settings.lmstudioUrl
-    ).toString();
-    const response = await requestUrl({
-      url,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: settings.lmstudioModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: settings.temperature,
-        max_tokens: settings.maxTitleLength + 50,
-        stream: false,
-      }),
-    });
-
-    if (response.status !== 200) {
-      throw new Error(
-        `LM Studio API error (${response.status}): ${response.text}`
-      );
-    }
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() ?? '';
-  }
 
   /**
    * Clean up AI response to extract just the title
