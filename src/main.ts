@@ -130,10 +130,15 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       if (newTitle) {
         const { dir, ext } = path.parse(file.path);
-        const newPath = normalizePath(`${dir}/${newTitle}${ext}`);
+        let candidatePath = normalizePath(`${dir}/${newTitle}${ext}`);
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(candidatePath)) {
+          candidatePath = normalizePath(`${dir}/${newTitle} (${counter})${ext}`);
+          counter++;
+        }
 
-        if (newPath !== file.path) {
-          await this.app.fileManager.renameFile(file, newPath);
+        if (candidatePath !== file.path) {
+          await this.app.fileManager.renameFile(file, candidatePath);
           new Notice(`Title generated: "${newTitle}"`);
         } else {
           new Notice(`Generated title is the same as the current one.`);
