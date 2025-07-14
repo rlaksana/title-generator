@@ -5,7 +5,7 @@ import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
 import type { TitleGeneratorSettings } from './types';
 
-export { AIService }; // Export for testing
+
 
 export default class TitleGeneratorPlugin extends Plugin {
   settings: TitleGeneratorSettings;

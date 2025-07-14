@@ -8,15 +8,7 @@ export type AIProvider =
   | 'anthropic'
   | 'google';
 
-/**
- * Defines the structure for AI provider details, including their name,
- * supported models, and whether they require an API key.
- */
-export interface AIProviderDetails {
-  name: string;
-  models: string[];
-  requiresApiKey: boolean;
-}
+
 
 /**
  * Cached model information for a provider
