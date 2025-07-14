@@ -239,9 +239,8 @@ export class AIService {
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        generationConfig: {
-          temperature: settings.temperature,
-        },
+        temperature: settings.temperature,
+      },
     };
 
     console.log('Calling Google Gemini API.');
