@@ -42,24 +42,38 @@ export class AIService {
     );
 
     try {
-      let title = await this.callAI(initialPrompt, content);
-      console.log('Raw title from AI:', title);
+      const maxAttempts = 3; // 1 initial call + 2 retries
+      let title = '';
 
-      // Clean up AI response - remove thinking process, explanations, etc.
-      title = this.cleanAIResponse(title);
-      console.log('Cleaned title:', title);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        let currentPrompt: string;
+        let currentContent: string;
 
-      if (title.length > settings.maxTitleLength) {
-        new Notice('Initial title was too long. Refining...');
-        console.log('Title too long, refining...');
-        const refinePrompt = settings.refinePrompt
-          .replace('{max_length}', settings.maxTitleLength.toString())
-          .replace('{title}', title);
+        if (attempt === 1) {
+          // First attempt: use the initial prompt
+          console.log(`Title generation attempt ${attempt}/${maxAttempts}`);
+          currentPrompt = initialPrompt;
+          currentContent = content;
+        } else {
+          // Retry attempts: use the refinement prompt
+          new Notice(`Title still too long. Refining... (Attempt ${attempt})`);
+          console.log(`Title still too long. Refining... (Attempt ${attempt})`);
+          currentPrompt = settings.refinePrompt
+            .replace('{max_length}', settings.maxTitleLength.toString())
+            .replace('{title}', title); // Use the previous (long) title
+          currentContent = ''; // No main content needed for refinement
+        }
 
-        title = await this.callAI(refinePrompt, ''); // No additional content needed
-        console.log('Raw refined title:', title);
-        title = this.cleanAIResponse(title);
-        console.log('Cleaned refined title:', title);
+        const rawTitle = await this.callAI(currentPrompt, currentContent);
+        title = this.cleanAIResponse(rawTitle);
+        console.log(`Attempt ${attempt} raw title:`, rawTitle);
+        console.log(`Attempt ${attempt} cleaned title:`, title);
+
+        // If the title is valid, break the loop
+        if (title.length > 0 && title.length <= settings.maxTitleLength) {
+          console.log(`Valid title found on attempt ${attempt}.`);
+          break;
+        }
       }
 
       // Final processing
@@ -188,7 +202,6 @@ export class AIService {
         model: settings.openAiModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: settings.temperature,
-        max_tokens: settings.maxTitleLength,
       }),
     });
 
@@ -216,7 +229,6 @@ export class AIService {
         model: settings.anthropicModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: settings.temperature,
-        max_tokens: settings.maxTitleLength,
       }),
     });
 
