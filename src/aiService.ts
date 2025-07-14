@@ -239,9 +239,9 @@ export class AIService {
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: settings.temperature,
-        maxOutputTokens: settings.maxTitleLength + 256,
-      },
+        generationConfig: {
+          temperature: settings.temperature,
+        },
     };
 
     console.log('Calling Google Gemini API.');
