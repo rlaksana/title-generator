@@ -18,9 +18,20 @@ export class AIService {
 
   public async generateTitle(noteContent: string): Promise<string> {
     const settings = this.getSettings();
+    console.log('Starting title generation with settings:', {
+      provider: settings.aiProvider,
+      model:
+        settings.aiProvider === 'openai'
+          ? settings.openAiModel
+          : settings.aiProvider === 'anthropic'
+          ? settings.anthropicModel
+          : settings.googleModel,
+      maxTitleLength: settings.maxTitleLength,
+    });
 
     // Validate configuration before proceeding
     if (!this.isConfigurationValid(settings)) {
+      console.error('Configuration is not valid. Aborting.');
       return '';
     }
 
@@ -32,18 +43,23 @@ export class AIService {
 
     try {
       let title = await this.callAI(initialPrompt, content);
+      console.log('Raw title from AI:', title);
 
       // Clean up AI response - remove thinking process, explanations, etc.
       title = this.cleanAIResponse(title);
+      console.log('Cleaned title:', title);
 
       if (title.length > settings.maxTitleLength) {
         new Notice('Initial title was too long. Refining...');
+        console.log('Title too long, refining...');
         const refinePrompt = settings.refinePrompt
           .replace('{max_length}', settings.maxTitleLength.toString())
           .replace('{title}', title);
 
         title = await this.callAI(refinePrompt, ''); // No additional content needed
+        console.log('Raw refined title:', title);
         title = this.cleanAIResponse(title);
+        console.log('Cleaned refined title:', title);
       }
 
       // Final processing
@@ -55,6 +71,7 @@ export class AIService {
         processedTitle = sanitizeFilename(processedTitle);
       }
 
+      console.log('Final processed title:', processedTitle);
       // Final safeguard truncation
       return truncateTitle(processedTitle, settings.maxTitleLength);
     } catch (error) {
@@ -218,22 +235,36 @@ export class AIService {
       throw new Error('Google Gemini API key is not set.');
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
+
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: settings.temperature,
+        maxOutputTokens: settings.maxTitleLength + 50,
+      },
+    };
+
+    console.log('Calling Google Gemini API.');
+    console.log(
+      'Gemini Request URL (key hidden):',
+      url.replace(/key=([^&]+)/, 'key=...')
+    );
+    console.log('Gemini Request Body:', JSON.stringify(requestBody, null, 2));
+
     const response = await requestUrl({
       url,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: settings.temperature,
-          maxOutputTokens: 512, // Significantly increased
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    console.log('Gemini Response Status:', response.status);
+    console.log('Gemini Raw Response Body:', response.text);
+
     if (response.status !== 200) {
+      console.error('Google Gemini API error. Response:', response.text);
       throw new Error(
         `Google Gemini API error (${response.status}): ${response.text}`
       );
@@ -247,14 +278,26 @@ export class AIService {
       !data.candidates[0].content.parts ||
       !data.candidates[0].content.parts[0]
     ) {
+      console.warn('Gemini response is missing expected content.', data);
+      // Check for safety ratings, which might indicate a blocked response
+      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+        new Notice(
+          'Title generation blocked by Google for safety reasons.',
+          6000
+        );
+        console.error(
+          'Gemini response blocked due to safety ratings:',
+          data.candidates[0].safetyRatings
+        );
+      }
       return '';
     }
 
-    return data.candidates[0].content.parts[0].text.trim() ?? '';
+    const extractedText =
+      data.candidates[0].content.parts[0].text.trim() ?? '';
+    console.log('Extracted text from Gemini:', extractedText);
+    return extractedText;
   }
-
-  
-
 
   /**
    * Clean up AI response to extract just the title
