@@ -226,24 +226,46 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     // API Key input
     if (providerInfo.requiresApiKey) {
       const keyName = `${provider}ApiKey` as keyof TitleGeneratorSettings;
-      new Setting(containerEl)
+      let initialValue = this.plugin.settings[keyName] as string;
+      let currentValue = initialValue;
+      let textEl: any, cancelBtn: any, okBtn: any;
+      const apiKeySetting = new Setting(containerEl)
         .setName(`${providerInfo.name} API Key`)
-        .setDesc(`Your ${providerInfo.name} API key.`)
-        .addText((text) => {
-          text.setPlaceholder('Enter API key')
-            .setValue(this.plugin.settings[keyName] as string)
-            .onChange((value) => {
-              (this.plugin.settings as any)[keyName] = value;
-            });
-        })
-        .addButton((btn) => {
-          btn.setButtonText('Cancel')
-             .onClick(() => this.display());
-        })
-        .addButton((btn) => {
-          btn.setButtonText('OK')
-             .onClick(async () => await this.plugin.saveSettings());
-        });
+        .setDesc(`Your ${providerInfo.name} API key.`);
+      apiKeySetting.addText((text) => {
+        textEl = text;
+        text.setPlaceholder('Enter API key')
+          .setValue(initialValue)
+          .onChange((value) => {
+            currentValue = value;
+            const changed = currentValue !== initialValue;
+            cancelBtn.setDisabled(!changed);
+            okBtn.setDisabled(!changed);
+          });
+      });
+      apiKeySetting.addButton((btn) => {
+        cancelBtn = btn;
+        btn.setButtonText('Cancel')
+          .setDisabled(true)
+          .onClick(() => {
+            textEl.setValue(initialValue);
+            currentValue = initialValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
+      });
+      apiKeySetting.addButton((btn) => {
+        okBtn = btn;
+        btn.setButtonText('OK')
+          .setDisabled(true)
+          .onClick(async () => {
+            (this.plugin.settings as any)[keyName] = currentValue;
+            await this.plugin.saveSettings();
+            initialValue = currentValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
+      });
     }
 
     // Model selection with reload button
