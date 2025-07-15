@@ -223,6 +223,29 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const provider = this.plugin.settings.aiProvider;
     const providerInfo = AI_PROVIDERS[provider];
 
+    // API Key input
+    if (providerInfo.requiresApiKey) {
+      const keyName = `${provider}ApiKey` as keyof TitleGeneratorSettings;
+      new Setting(containerEl)
+        .setName(`${providerInfo.name} API Key`)
+        .setDesc(`Your ${providerInfo.name} API key.`)
+        .addText((text) => {
+          text.setPlaceholder('Enter API key')
+            .setValue(this.plugin.settings[keyName] as string)
+            .onChange((value) => {
+              (this.plugin.settings as any)[keyName] = value;
+            });
+        })
+        .addButton((btn) => {
+          btn.setButtonText('Cancel')
+             .onClick(() => this.display());
+        })
+        .addButton((btn) => {
+          btn.setButtonText('OK')
+             .onClick(async () => await this.plugin.saveSettings());
+        });
+    }
+
     // Model selection with reload button
     this.renderModelSelection(containerEl, provider, providerInfo);
   }
