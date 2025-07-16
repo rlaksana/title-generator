@@ -6,7 +6,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 ## Key Features
 
-- **Dynamic Model Loading**: Automatically detects and loads available models from your configured AI providers - no more hardcoded model lists!
+- **Dynamic Model Loading with Search**: Automatically detects and loads available models from your configured AI providers with a searchable dropdown - no more hardcoded model lists!
 - **Intelligent Title Refinement**: If an AI-generated title is too long, the plugin asks the AI to shorten it, preserving the core meaning instead of just cutting it off.
 - **Cost-Efficient Analysis**: Limit the amount of text sent to the AI (e.g., the first 2000 characters) to significantly reduce token usage and cost on long notes.
 - **Multi-Provider AI**: Choose from OpenAI, Anthropic, or Google Gemini.
@@ -39,8 +39,8 @@ Open **Settings → Enhanced Title Generator** to configure the plugin.
 | Setting                      | Description                                                                                             | Default                                                                                                |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **AI Provider**              | Select your preferred AI service (OpenAI, Anthropic, Google Gemini).                            | `OpenAI`                                                                                               |
-| **API Key**     | Your API key for the selected cloud service.                 | (empty)                                                                     |
-| **Model**                    | The specific AI model to use for generation. Models are loaded dynamically from your provider.          | Auto-detected from provider                                                                            |
+| **API Key**     | Your API key for the selected cloud service. Save/Cancel buttons are enabled only when changes are made.                 | (empty)                                                                     |
+| **Model**                    | The specific AI model to use for generation. Models are loaded dynamically from your provider with a searchable dropdown.          | Auto-detected from provider                                                                            |
 | **Initial Prompt**           | The prompt template for the first request. Use `{max_length}` as a placeholder.                         | `Generate a concise, descriptive title for the following text. The title must be a maximum of {max_length} characters.` |
 | **Refinement Prompt**        | The prompt used if the first title is too long. Use `{max_length}` and `{title}`.                       | `The following title is too long. Please shorten it to be under {max_length} characters, while preserving its core meaning: "{title}"` |
 | **Temperature**              | Controls AI creativity (0.0 = deterministic, 1.0 = highly creative).                                    | `0.7`                                                                                                  |
@@ -57,10 +57,11 @@ The plugin now automatically detects and loads available models from your config
 ### How It Works
 
 1. **Auto-Detection**: When you set an API key or server URL, the plugin automatically queries for available models
-2. **Smart Caching**: Models are cached for 1 hour to reduce API calls and improve performance
-3. **Reload Button**: Click the refresh button next to the model dropdown to manually reload models
-4. **Error Handling**: Clear error messages help troubleshoot connection issues
-5. **Fallback Models**: If model loading fails, the plugin falls back to a curated list of popular models
+2. **Searchable Interface**: Type to filter through available models in a user-friendly dropdown
+3. **Smart Caching**: Models are cached for 1 hour to reduce API calls and improve performance
+4. **Reload Button**: Click the refresh button next to the model dropdown to manually reload models
+5. **Error Handling**: Clear error messages help troubleshoot connection issues
+6. **Fallback Models**: If model loading fails, the plugin falls back to a curated list of popular models
 
 ### Model Loading Triggers
 
