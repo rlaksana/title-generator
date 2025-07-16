@@ -18,14 +18,29 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 ## Installation
 
-1.  Ensure you have the latest version of Obsidian.
-2.  Install the plugin via the Community Plugins browser in Obsidian.
-3.  Enable the plugin in your settings.
+### Via BRAT (Recommended)
+1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) in Obsidian
+2. Open BRAT settings and click "Add Beta Plugin"
+3. Enter repository: `rlaksana/obsidian-title-generator`
+4. Click "Add Plugin" and enable it
 
-Alternatively, for manual installation:
-1.  Download the `main.js` and `manifest.json` files from the latest [GitHub Release](https://github.com/rlaksana/obsidian-title-generator/releases).
-2.  Place these files in your vault's `.obsidian/plugins/enhanced-title-generator/` directory.
-3.  Reload Obsidian and enable the plugin.
+> **Having BRAT installation issues?** Check our [CDN Troubleshooting Guide](CDN_TROUBLESHOOTING.md) for quick fixes.
+
+### Via Community Plugins (When Available)
+1. Ensure you have the latest version of Obsidian
+2. Install the plugin via the Community Plugins browser in Obsidian
+3. Enable the plugin in your settings
+
+### Manual Installation
+1. Download the `main.js` and `manifest.json` files from the latest [GitHub Release](https://github.com/rlaksana/obsidian-title-generator/releases)
+2. Place these files in your vault's `.obsidian/plugins/enhanced-title-generator/` directory
+3. Reload Obsidian and enable the plugin
+
+### Installation Troubleshooting
+- **CDN Issues**: Run `npm run check-cdn` to verify release accessibility
+- **Force Fix**: Run `npm run force-release` to recreate the latest release
+- **Status Check**: Visit [GitHub Status](https://githubstatus.com) for CDN issues
+- **Get Help**: Run `npm run release-help` for available commands
 
 ## Usage
 

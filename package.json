@@ -14,7 +14,11 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "test": "node test-cli.js"
+    "test": "node test-cli.js",
+    "check-cdn": "node scripts/check-cdn-status.js",
+    "check-local": "node scripts/test-cdn-local.js",
+    "force-release": "node scripts/force-release.js",
+    "release-help": "echo 'Available release commands:' && echo '  npm run check-cdn    - Check CDN status and asset accessibility' && echo '  npm run check-local  - Test local files before release' && echo '  npm run force-release - Recreate latest release to fix CDN issues' && echo '  npm run build        - Build plugin assets' && echo 'For BRAT: Use repository rlaksana/obsidian-title-generator'"
   },
   "keywords": [
     "obsidian",

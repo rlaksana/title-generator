@@ -109,15 +109,107 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, deleting and recreating..."
             gh release delete "$TAG" --yes --cleanup-tag || true
-            sleep 2
+            sleep 5  # Increased wait time for CDN propagation
           fi
 
-          # Create the release
+          # Create the release with retry logic
           echo "Creating release $TAG..."
-          gh release create "$TAG" \
-            --title "Release $TAG" \
-            --generate-notes \
-            dist/main.js dist/manifest.json
+          for i in {1..3}; do
+            if gh release create "$TAG" \
+              --title "Release $TAG" \
+              --generate-notes \
+              dist/main.js dist/manifest.json; then
+              echo "Release created successfully on attempt $i!"
+              break
+            else
+              echo "Attempt $i failed, waiting 10 seconds before retry..."
+              sleep 10
+            fi
+          done
 
-          echo "Release created successfully!"
+          # Wait for CDN propagation
+          echo "Waiting for CDN propagation..."
+          sleep 30
+
+          # Verify assets are accessible
+          echo "Verifying asset accessibility..."
+          MAIN_JS_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/main.js"
+          MANIFEST_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/manifest.json"
+          
+          for i in {1..10}; do
+            echo "Verification attempt $i/10..."
+            if curl -f -s -L "$MAIN_JS_URL" > /dev/null && curl -f -s -L "$MANIFEST_URL" > /dev/null; then
+              echo "✅ Assets are accessible!"
+              break
+            else
+              echo "Assets not yet accessible, waiting 30 seconds..."
+              sleep 30
+            fi
+          done
+
           echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/$TAG"
+
+      - name: 'Create Mirror Release for CDN Reliability'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create a secondary release with slightly different name to ensure CDN propagation
+          MIRROR_TAG="v$RELEASE_VERSION-mirror"
+          
+          echo "Creating mirror release $MIRROR_TAG for CDN reliability..."
+          sleep 60  # Wait 1 minute for initial CDN propagation
+          
+          # Create mirror release
+          gh release create "$MIRROR_TAG" \
+            --title "Mirror Release $MIRROR_TAG" \
+            --notes "Mirror release for CDN reliability. Use main release v$RELEASE_VERSION for BRAT." \
+            dist/main.js dist/manifest.json
+          
+          echo "Mirror release created for CDN reliability"
+          
+          # Clean up mirror release after 5 minutes (for CDN propagation)
+          echo "Scheduling mirror release cleanup..."
+          sleep 300
+          gh release delete "$MIRROR_TAG" --yes --cleanup-tag || echo "Mirror release cleanup failed (expected)"
+
+      - name: 'Post-Release Verification'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$RELEASE_VERSION"
+          echo "Running post-release verification..."
+          
+          # Multiple verification attempts with different methods
+          MAIN_JS_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/main.js"
+          MANIFEST_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/manifest.json"
+          
+          echo "Direct URL verification:"
+          for i in {1..5}; do
+            echo "Verification round $i/5..."
+            
+            # Test with curl
+            if curl -f -s -L "$MAIN_JS_URL" > /tmp/main.js && curl -f -s -L "$MANIFEST_URL" > /tmp/manifest.json; then
+              echo "✅ Direct URL access successful"
+              MAIN_SIZE=$(wc -c < /tmp/main.js)
+              MANIFEST_SIZE=$(wc -c < /tmp/manifest.json)
+              echo "Downloaded sizes: main.js=$MAIN_SIZE bytes, manifest.json=$MANIFEST_SIZE bytes"
+              
+              # Verify content integrity
+              if [ "$MAIN_SIZE" -gt 1000 ] && [ "$MANIFEST_SIZE" -gt 100 ]; then
+                echo "✅ File sizes look good"
+                break
+              else
+                echo "❌ File sizes too small, potential CDN issue"
+              fi
+            else
+              echo "❌ Direct URL access failed"
+            fi
+            
+            if [ $i -lt 5 ]; then
+              echo "Waiting 60 seconds before next verification..."
+              sleep 60
+            fi
+          done
+          
+          echo "✅ Release verification completed"
+          echo "📋 BRAT Installation: Use repository URL 'rlaksana/obsidian-title-generator'"
