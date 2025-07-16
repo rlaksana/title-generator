@@ -13,6 +13,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+    this.addStyles();
 
     // The AI service is now given a function to get the latest settings dynamically.
     this.aiService = new AIService(() => this.settings);
@@ -55,6 +56,42 @@ export default class TitleGeneratorPlugin extends Plugin {
 
     this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
     if (this.settings.debugMode) console.log('Enhanced Title Generator plugin loaded.');
+  }
+
+  addStyles() {
+    const css = `
+      .model-search-container {
+        position: relative;
+      }
+      .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--background-secondary);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: var(--radius-m);
+        z-index: 10;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .search-result-item {
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .search-result-item:hover {
+        background-color: var(--background-modifier-hover);
+      }
+      .search-result-item.is-selected {
+        background-color: var(--background-modifier-success);
+        color: var(--text-on-accent);
+      }
+    `;
+    const styleEl = document.createElement('style');
+    styleEl.id = 'enhanced-title-generator-styles';
+    styleEl.innerHTML = css;
+    document.head.appendChild(styleEl);
+    this.register(() => styleEl.remove());
   }
 
   async loadSettings() {

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
 // Test 2: Consistency validation
 import type { AIProvider, TitleGeneratorSettings } from './types';
 import type TitleGeneratorPlugin from './main';
@@ -301,12 +301,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       .setName('Model')
       .setDesc(`The ${providerInfo.name} model to use for generation.`);
 
-    // Add model dropdown
-    let dropdown: any;
-    modelSetting.addDropdown((d) => {
-      dropdown = d;
-      this.populateModelDropdown(d, provider, currentModel, isLoading);
-    });
+    // Add model search component
+    this.createModelSearchComponent(modelSetting.controlEl, provider);
 
     // Add reload button
     modelSetting.addButton((btn) => {
@@ -344,24 +340,82 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     }
   }
 
-  private async populateModelDropdown(
-    dropdown: any,
+  private createModelSearchComponent(
+    containerEl: HTMLElement,
+    provider: AIProvider
+  ): void {
+    let modelName: keyof TitleGeneratorSettings;
+    switch (provider) {
+      case 'openai':
+        modelName = 'openAiModel';
+        break;
+      case 'anthropic':
+        modelName = 'anthropicModel';
+        break;
+      case 'google':
+        modelName = 'googleModel';
+        break;
+      default:
+        return;
+    }
+    const currentModel = this.plugin.settings[modelName] as string;
+    const isLoading = this.modelService.isLoading(provider);
+
+    containerEl.addClass('model-search-container');
+
+    const searchInput = new TextComponent(containerEl)
+      .setPlaceholder('Search or select a model...')
+      .setValue(currentModel);
+
+    const resultsEl = containerEl.createDiv('search-results');
+    resultsEl.style.display = 'none'; // Initially hidden
+
+    const populateList = async (filter: string) => {
+      // We pass the *currently selected* model to populateModelList
+      // so it can be highlighted, but the input might have a different value
+      // which is used as the filter.
+      const selectedModel = this.plugin.settings[modelName] as string;
+      await this.populateModelList(
+        resultsEl,
+        provider,
+        selectedModel,
+        isLoading,
+        filter
+      );
+    };
+
+    searchInput.inputEl.addEventListener('focus', () => {
+      resultsEl.style.display = 'block';
+      populateList(searchInput.getValue());
+    });
+
+    searchInput.inputEl.addEventListener('blur', () => {
+      // Delay to allow click on results
+      setTimeout(() => {
+        resultsEl.style.display = 'none';
+      }, 150);
+    });
+
+    searchInput.onChange(populateList);
+  }
+
+  private async populateModelList(
+    listEl: HTMLElement,
     provider: AIProvider,
     currentModel: string,
-    isLoading: boolean
+    isLoading: boolean,
+    filter: string = ''
   ): Promise<void> {
-    dropdown.selectEl.empty();
+    listEl.empty();
 
     if (isLoading) {
-      dropdown.addOption('loading', 'Loading models...');
-      dropdown.setValue('loading');
-      dropdown.setDisabled(true);
+      listEl.createDiv({ text: 'Loading models...' });
       return;
     }
 
-    dropdown.setDisabled(false);
-
-    const availableModels = await this.modelService.getModels(provider);
+    const availableModels = (
+      await this.modelService.getModels(provider)
+    ).filter((m) => m.toLowerCase().includes(filter.toLowerCase()));
 
     let modelName: keyof TitleGeneratorSettings;
     switch (provider) {
@@ -378,49 +432,44 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return; // Should not happen
     }
 
-    // Ensure the currently saved model is always in the list,
-    // even if the cache is stale. This prevents the selection from disappearing.
-    if (currentModel && !availableModels.includes(currentModel)) {
+    // Ensure the currently saved model is always in the list if it matches the filter,
+    // or if there is no filter.
+    if (
+      currentModel &&
+      !availableModels.includes(currentModel) &&
+      currentModel.toLowerCase().includes(filter.toLowerCase())
+    ) {
       availableModels.unshift(currentModel);
     }
 
     if (availableModels.length === 0) {
       const cachedInfo = this.modelService.getCachedInfo(provider);
       if (cachedInfo?.error) {
-        dropdown.addOption(
-          'no-models',
-          `Error: ${cachedInfo.error.substring(0, 50)}...`
-        );
+        listEl.createDiv({
+          text: `Error: ${cachedInfo.error.substring(0, 50)}...`,
+        });
+      } else if (filter) {
+        listEl.createDiv({ text: 'No matching models found.' });
       } else {
-        dropdown.addOption(
-          'no-models',
-          'Click refresh icon to load models'
-        );
+        listEl.createDiv({ text: 'Click refresh icon to load models' });
       }
-      dropdown.setValue('no-models');
-      dropdown.setDisabled(true);
       return;
     }
 
-    // Add a placeholder
-    dropdown.addOption('', 'Select a model...');
-
-    // Add models to dropdown
     availableModels.forEach((model) => {
-      dropdown.addOption(model, model);
-    });
-
-    // Set current value if it's valid, otherwise use placeholder
-    if (currentModel && availableModels.includes(currentModel)) {
-      dropdown.setValue(currentModel);
-    } else {
-      dropdown.setValue('');
-    }
-
-    // Set change handler
-    dropdown.onChange(async (value: string) => {
-      (this.plugin.settings as any)[modelName] = value;
-      await this.plugin.saveSettings();
+      const modelEl = listEl.createDiv({
+        text: model,
+        cls: 'search-result-item',
+      });
+      if (model === currentModel) {
+        modelEl.addClass('is-selected');
+      }
+      modelEl.addEventListener('mousedown', async (e) => {
+        e.preventDefault(); // Prevent blur event from firing too early
+        (this.plugin.settings as any)[modelName] = model;
+        await this.plugin.saveSettings();
+        this.display(); // Re-render to show selection and update input
+      });
     });
   }
 
