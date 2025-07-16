@@ -63,6 +63,10 @@ export default class TitleGeneratorPlugin extends Plugin {
       .model-search-container {
         position: relative;
       }
+      .model-search-container input {
+        width: 100%;
+        box-sizing: border-box;
+      }
       .search-results {
         position: absolute;
         top: 100%;
@@ -74,10 +78,15 @@ export default class TitleGeneratorPlugin extends Plugin {
         z-index: 10;
         max-height: 200px;
         overflow-y: auto;
+        min-width: 100%;
+        box-sizing: border-box;
       }
       .search-result-item {
         padding: 8px 12px;
         cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .search-result-item:hover {
         background-color: var(--background-modifier-hover);
