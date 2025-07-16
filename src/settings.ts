@@ -35,8 +35,16 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   googleModel: '',
 
   // Dynamic Model Caching
-  cachedModels: {},
-  modelLoadingState: {},
+  cachedModels: {
+    openai: { models: [], lastUpdated: 0 },
+    anthropic: { models: [], lastUpdated: 0 },
+    google: { models: [], lastUpdated: 0 },
+  },
+  modelLoadingState: {
+    openai: false,
+    anthropic: false,
+    google: false,
+  },
 
   // Title
   lowerCaseTitles: false,

@@ -1,24 +1,34 @@
 import { App, Editor, Notice, Plugin, TFile, normalizePath } from 'obsidian';
-// Test #4: Confirm consistent version bumping
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
-import type { TitleGeneratorSettings } from './types';
+import { initializeLogger, getLogger, updateLoggerConfig } from './logger';
+import { initializeErrorHandler, getErrorHandler } from './errorHandler';
+import { initializeValidationService, getValidationService } from './validation';
+import { PLUGIN_NAME, UI_CONFIG } from './constants';
+import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress } from './types';
 
 
 
 export default class TitleGeneratorPlugin extends Plugin {
   settings: TitleGeneratorSettings;
   aiService: AIService;
+  private logger = initializeLogger({ debugMode: false, pluginName: PLUGIN_NAME });
+  private errorHandler = initializeErrorHandler();
+  private validationService = initializeValidationService();
 
   async onload() {
-    await this.loadSettings();
-    this.addStyles();
+    try {
+      await this.loadSettings();
+      this.addStyles();
 
-    // The AI service is now given a function to get the latest settings dynamically.
-    this.aiService = new AIService(() => this.settings);
+      // Update logger with current debug mode setting
+      updateLoggerConfig({ debugMode: this.settings.debugMode });
 
-    this.addCommand({
+      // Initialize AI service with enhanced error handling
+      this.aiService = new AIService(() => this.settings);
+
+      this.addCommand({
       id: 'generate-title',
       name: 'Generate title for current note',
       editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
@@ -54,20 +64,23 @@ export default class TitleGeneratorPlugin extends Plugin {
       })
     );
 
-    this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
-    if (this.settings.debugMode) console.log('Enhanced Title Generator plugin loaded.');
+      this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
+      this.logger.info('Plugin loaded successfully');
+    } catch (error) {
+      this.errorHandler.handleError(error as Error, { context: 'plugin-onload' });
+    }
   }
 
   addStyles() {
     const css = `
-      .model-search-container {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_CONTAINER} {
         position: relative;
       }
-      .model-search-container input {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_CONTAINER} input {
         width: 100%;
         box-sizing: border-box;
       }
-      .search-results {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_RESULTS} {
         position: absolute;
         top: 100%;
         left: 0;
@@ -76,22 +89,22 @@ export default class TitleGeneratorPlugin extends Plugin {
         border: 1px solid var(--background-modifier-border);
         border-radius: var(--radius-m);
         z-index: 10;
-        max-height: 200px;
+        max-height: ${UI_CONFIG.MAX_DROPDOWN_HEIGHT}px;
         overflow-y: auto;
         min-width: 100%;
         box-sizing: border-box;
       }
-      .search-result-item {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_ITEM} {
         padding: 8px 12px;
         cursor: pointer;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .search-result-item:hover {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_ITEM_HOVER} {
         background-color: var(--background-modifier-hover);
       }
-      .search-result-item.is-selected {
+      .${UI_CONFIG.CSS_CLASSES.SEARCH_ITEM}.${UI_CONFIG.CSS_CLASSES.SEARCH_ITEM_SELECTED} {
         background-color: var(--background-modifier-success);
         color: var(--text-on-accent);
       }
@@ -121,82 +134,126 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile) {
-      new Notice('No active file. Cannot generate title.');
-      return;
+    try {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (!activeFile) {
+        this.errorHandler.handleError(
+          new Error('No active file found'),
+          { context: 'generate-title-editor' }
+        );
+        return;
+      }
+      const content = editor.getValue();
+      await this.processSingleFile(activeFile, content);
+    } catch (error) {
+      this.errorHandler.handleError(error as Error, { context: 'generate-title-editor' });
     }
-    const content = editor.getValue();
-    await this.processSingleFile(activeFile, content);
   }
 
   private async generateTitleForFile(file: TFile): Promise<void> {
-    const content = await this.app.vault.cachedRead(file);
-    await this.processSingleFile(file, content);
+    try {
+      const content = await this.app.vault.cachedRead(file);
+      await this.processSingleFile(file, content);
+    } catch (error) {
+      this.errorHandler.handleError(error as Error, { context: 'generate-title-file', file: file.path });
+    }
   }
 
   private async generateTitlesForMultipleFiles(files: TFile[]): Promise<void> {
     const total = files.length;
     const statusBarItem = this.addStatusBarItem();
-    let processedCount = 0;
+    const progress: BatchOperationProgress = {
+      total,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+    };
 
     const updateStatus = () => {
-      statusBarItem.setText(`Generating titles: ${processedCount}/${total}...`);
+      statusBarItem.setText(
+        `Generating titles: ${progress.processed}/${total} (${progress.succeeded} succeeded, ${progress.failed} failed)`
+      );
     };
 
     updateStatus();
+    this.logger.info(`Starting batch title generation for ${total} files`);
+
+    const errors: Error[] = [];
 
     for (const file of files) {
+      progress.current = file.basename;
       try {
         await this.generateTitleForFile(file);
+        progress.succeeded++;
+        this.logger.debug(`Successfully generated title for ${file.path}`);
       } catch (error) {
-        console.error(`Failed to generate title for ${file.path}`, error);
-        new Notice(`Failed for ${file.basename}. See console for details.`);
+        progress.failed++;
+        errors.push(error as Error);
+        this.logger.error(`Failed to generate title for ${file.path}`, error);
       } finally {
-        processedCount++;
+        progress.processed++;
         updateStatus();
       }
     }
 
-    statusBarItem.setText(`Title generation complete for ${total} notes.`);
-    setTimeout(() => statusBarItem.remove(), 5000);
+    if (errors.length > 0) {
+      this.errorHandler.handleMultipleErrors(errors, { context: 'batch-generation' });
+    }
+
+    statusBarItem.setText(`Title generation complete: ${progress.succeeded} succeeded, ${progress.failed} failed`);
+    setTimeout(() => statusBarItem.remove(), UI_CONFIG.NOTIFICATION_DURATION.MEDIUM);
+    
+    this.logger.info(`Batch title generation completed`, progress);
   }
 
-  private async processSingleFile(file: TFile, content: string): Promise<void> {
+  private async processSingleFile(file: TFile, content: string): Promise<FileOperationResult> {
     if (!content.trim()) {
-      new Notice('Note is empty. Cannot generate title.');
-      return;
+      const error = this.errorHandler.createGenerationError('Note is empty. Cannot generate title.');
+      this.errorHandler.handleError(error);
+      return { success: false, originalPath: file.path, error: error.message };
     }
 
     const statusBarItem = this.addStatusBarItem();
     statusBarItem.setText('Generating title...');
 
     try {
-      const newTitle = await this.aiService.generateTitle(content);
+      // Validate content before processing
+      const sanitizedContent = this.validationService.sanitizeInput(content);
+      
+      this.logger.debug(`Generating title for file: ${file.path}`);
+      const newTitle = await this.aiService.generateTitle(sanitizedContent);
 
       if (newTitle) {
+        // Sanitize the generated title
+        const sanitizedTitle = this.validationService.sanitizeFilename(newTitle);
+        
         const { dir, ext } = path.parse(file.path);
-        let candidatePath = normalizePath(`${dir}/${newTitle}${ext}`);
+        let candidatePath = normalizePath(`${dir}/${sanitizedTitle}${ext}`);
         let counter = 1;
+        
         while (this.app.vault.getAbstractFileByPath(candidatePath)) {
-          candidatePath = normalizePath(`${dir}/${newTitle} (${counter})${ext}`);
+          candidatePath = normalizePath(`${dir}/${sanitizedTitle} (${counter})${ext}`);
           counter++;
         }
 
         if (candidatePath !== file.path) {
           await this.app.fileManager.renameFile(file, candidatePath);
-          new Notice(`Title generated: "${newTitle}"`);
+          new Notice(`Title generated: "${sanitizedTitle}"`);
+          this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
+          return { success: true, originalPath: file.path, newPath: candidatePath };
         } else {
           new Notice(`Generated title is the same as the current one.`);
+          this.logger.debug(`No rename needed for ${file.path}: title unchanged`);
+          return { success: true, originalPath: file.path, newPath: file.path };
         }
       } else {
-        new Notice(
-          'Title generation failed. Please check settings or console.'
-        );
+        const error = this.errorHandler.createGenerationError('Title generation returned empty result');
+        this.errorHandler.handleError(error);
+        return { success: false, originalPath: file.path, error: error.message };
       }
     } catch (error) {
-      console.error('Error during title processing:', error);
-      new Notice('An unexpected error occurred. See console for details.');
+      this.errorHandler.handleError(error as Error, { context: 'process-single-file', file: file.path });
+      return { success: false, originalPath: file.path, error: (error as Error).message };
     } finally {
       statusBarItem.remove();
     }
