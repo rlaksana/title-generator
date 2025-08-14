@@ -203,6 +203,43 @@ export interface UIElements {
 }
 
 /**
+ * Duplicate detection sensitivity levels
+ */
+export type DuplicateDetectionSensitivity = 'strict' | 'normal' | 'loose';
+
+/**
+ * Represents a title match found in content
+ */
+export interface TitleMatch {
+  startIndex: number;
+  endIndex: number;
+  matchedText: string;
+  similarity: number;
+  lineNumber: number;
+  isMarkdownHeader: boolean;
+  headerLevel?: number;
+}
+
+/**
+ * Result of duplicate detection in content
+ */
+export interface DuplicateDetectionResult {
+  found: boolean;
+  matches: TitleMatch[];
+  contentWithoutDuplicates?: string;
+  totalMatches: number;
+}
+
+/**
+ * Configuration for content modification
+ */
+export interface ContentModificationOptions {
+  removeAllMatches: boolean;
+  preserveFormatting: boolean;
+  confirmBeforeRemoval: boolean;
+}
+
+/**
  * Main settings interface for the plugin.
  */
 export interface TitleGeneratorSettings {
@@ -234,4 +271,11 @@ export interface TitleGeneratorSettings {
   maxTitleLength: number;
   maxContentLength: number;
   refinePrompt: string;
+
+  // Duplicate Detection Settings
+  enableDuplicateRemoval: boolean;
+  duplicateDetectionSensitivity: DuplicateDetectionSensitivity;
+  autoRemoveDuplicates: boolean;
+  confirmBeforeRemoval: boolean;
+  removeOnlyExactMatches: boolean;
 }

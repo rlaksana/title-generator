@@ -1,4 +1,4 @@
-import { App, Editor, Notice, Plugin, TFile, normalizePath } from 'obsidian';
+import { App, Editor, Notice, Plugin, TFile, normalizePath, Modal } from 'obsidian';
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
@@ -6,7 +6,8 @@ import { initializeLogger, getLogger, updateLoggerConfig } from './logger';
 import { initializeErrorHandler, getErrorHandler } from './errorHandler';
 import { initializeValidationService, getValidationService } from './validation';
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
-import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress } from './types';
+import { detectTitleInContent, removeDuplicatesFromContent, shouldRemoveMatch } from './utils';
+import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress, DuplicateDetectionResult, TitleMatch } from './types';
 
 
 
@@ -227,6 +228,15 @@ export default class TitleGeneratorPlugin extends Plugin {
         // Sanitize the generated title
         const sanitizedTitle = this.validationService.sanitizeFilename(newTitle);
         
+        // Check for duplicate titles in content if enabled
+        let finalContent = content;
+        if (this.settings.enableDuplicateRemoval) {
+          const duplicateResult = await this.handleDuplicateTitles(file, sanitizedTitle, content);
+          if (duplicateResult.contentModified) {
+            finalContent = duplicateResult.modifiedContent;
+          }
+        }
+        
         const { dir, ext } = path.parse(file.path);
         let candidatePath = normalizePath(`${dir}/${sanitizedTitle}${ext}`);
         let counter = 1;
@@ -238,10 +248,21 @@ export default class TitleGeneratorPlugin extends Plugin {
 
         if (candidatePath !== file.path) {
           await this.app.fileManager.renameFile(file, candidatePath);
+          
+          // Update content if it was modified
+          if (finalContent !== content) {
+            await this.app.vault.modify(this.app.vault.getAbstractFileByPath(candidatePath) as TFile, finalContent);
+          }
+          
           new Notice(`Title generated: "${sanitizedTitle}"`);
           this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
           return { success: true, originalPath: file.path, newPath: candidatePath };
         } else {
+          // Update content even if filename didn't change
+          if (finalContent !== content) {
+            await this.app.vault.modify(file, finalContent);
+          }
+          
           new Notice(`Generated title is the same as the current one.`);
           this.logger.debug(`No rename needed for ${file.path}: title unchanged`);
           return { success: true, originalPath: file.path, newPath: file.path };
@@ -257,5 +278,125 @@ export default class TitleGeneratorPlugin extends Plugin {
     } finally {
       statusBarItem.remove();
     }
+  }
+
+  private async handleDuplicateTitles(
+    file: TFile, 
+    generatedTitle: string, 
+    content: string
+  ): Promise<{ contentModified: boolean; modifiedContent: string }> {
+    try {
+      const sensitivity = this.settings.removeOnlyExactMatches ? 'strict' : this.settings.duplicateDetectionSensitivity;
+      const detectionResult = detectTitleInContent(generatedTitle, content, sensitivity);
+      
+      if (!detectionResult.found) {
+        this.logger.debug(`No duplicate titles found in ${file.path}`);
+        return { contentModified: false, modifiedContent: content };
+      }
+
+      this.logger.debug(`Found ${detectionResult.totalMatches} potential duplicate(s) in ${file.path}`);
+      
+      // Filter matches based on settings
+      const matchesToRemove = detectionResult.matches.filter(match => 
+        shouldRemoveMatch(match, this.settings.removeOnlyExactMatches)
+      );
+
+      if (matchesToRemove.length === 0) {
+        this.logger.debug(`No matches meet removal criteria in ${file.path}`);
+        return { contentModified: false, modifiedContent: content };
+      }
+
+      // Handle based on user settings
+      if (this.settings.autoRemoveDuplicates) {
+        // Auto-remove without confirmation
+        const cleanedContent = removeDuplicatesFromContent(content, matchesToRemove);
+        new Notice(`Removed ${matchesToRemove.length} duplicate title(s) from note content`);
+        this.logger.info(`Auto-removed ${matchesToRemove.length} duplicate(s) from ${file.path}`);
+        return { contentModified: true, modifiedContent: cleanedContent };
+      } else if (this.settings.confirmBeforeRemoval) {
+        // Show confirmation dialog
+        const shouldRemove = await this.showDuplicateConfirmationDialog(matchesToRemove, generatedTitle);
+        if (shouldRemove) {
+          const cleanedContent = removeDuplicatesFromContent(content, matchesToRemove);
+          new Notice(`Removed ${matchesToRemove.length} duplicate title(s) from note content`);
+          this.logger.info(`User confirmed removal of ${matchesToRemove.length} duplicate(s) from ${file.path}`);
+          return { contentModified: true, modifiedContent: cleanedContent };
+        } else {
+          this.logger.debug(`User declined to remove duplicates from ${file.path}`);
+          return { contentModified: false, modifiedContent: content };
+        }
+      } else {
+        // Just notify about duplicates found
+        new Notice(`Found ${matchesToRemove.length} duplicate title(s) in note content`);
+        this.logger.info(`Found but did not remove ${matchesToRemove.length} duplicate(s) in ${file.path}`);
+        return { contentModified: false, modifiedContent: content };
+      }
+    } catch (error) {
+      this.errorHandler.handleError(error as Error, { context: 'handle-duplicate-titles', file: file.path });
+      return { contentModified: false, modifiedContent: content };
+    }
+  }
+
+  private async showDuplicateConfirmationDialog(matches: TitleMatch[], generatedTitle: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const modal = new DuplicateConfirmationModal(this.app, matches, generatedTitle, resolve);
+      modal.open();
+    });
+  }
+}
+
+class DuplicateConfirmationModal extends Modal {
+  constructor(
+    app: App, 
+    private matches: TitleMatch[], 
+    private generatedTitle: string,
+    private onResult: (result: boolean) => void
+  ) {
+    super(app);
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    contentEl.createEl('h2', { text: 'Duplicate Titles Detected' });
+    
+    contentEl.createEl('p', { 
+      text: `Found ${this.matches.length} duplicate title(s) similar to "${this.generatedTitle}" in the note content:` 
+    });
+
+    const matchList = contentEl.createEl('ul');
+    this.matches.forEach((match, index) => {
+      const listItem = matchList.createEl('li');
+      listItem.createEl('strong', { text: `Line ${match.lineNumber}: ` });
+      listItem.createEl('code', { text: match.matchedText });
+      listItem.createEl('span', { text: ` (${Math.round(match.similarity * 100)}% similar)` });
+    });
+
+    contentEl.createEl('p', { text: 'Would you like to remove these duplicate titles from the note content?' });
+
+    const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.marginTop = '20px';
+
+    const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+    cancelButton.addEventListener('click', () => {
+      this.close();
+      this.onResult(false);
+    });
+
+    const confirmButton = buttonContainer.createEl('button', { text: 'Remove Duplicates' });
+    confirmButton.addClass('mod-cta');
+    confirmButton.addEventListener('click', () => {
+      this.close();
+      this.onResult(true);
+    });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }

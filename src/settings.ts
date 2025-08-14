@@ -60,6 +60,13 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   temperature: 0.3,
   maxTitleLength: 60,
   maxContentLength: 2000,
+
+  // Duplicate Detection Settings
+  enableDuplicateRemoval: false,
+  duplicateDetectionSensitivity: 'normal',
+  autoRemoveDuplicates: false,
+  confirmBeforeRemoval: true,
+  removeOnlyExactMatches: false,
 };
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {
@@ -225,6 +232,88 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             }
           });
       });
+
+    /* --- Duplicate Detection Settings --- */
+    containerEl.createEl('h3', { text: 'Duplicate Title Detection' });
+
+    new Setting(containerEl)
+      .setName('Enable duplicate removal')
+      .setDesc(
+        'Detect and optionally remove duplicate titles that already exist in the note content.'
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.enableDuplicateRemoval)
+          .onChange(async (value) => {
+            this.plugin.settings.enableDuplicateRemoval = value;
+            await this.plugin.saveSettings();
+            this.display(); // Re-render to show/hide other options
+          });
+      });
+
+    if (this.plugin.settings.enableDuplicateRemoval) {
+      new Setting(containerEl)
+        .setName('Detection sensitivity')
+        .setDesc(
+          'How similar titles need to be to be considered duplicates. Strict: near-perfect match, Normal: minor differences allowed, Loose: fuzzy matching.'
+        )
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOption('strict', 'Strict (95% similarity)')
+            .addOption('normal', 'Normal (85% similarity)')
+            .addOption('loose', 'Loose (75% similarity)')
+            .setValue(this.plugin.settings.duplicateDetectionSensitivity)
+            .onChange(async (value) => {
+              this.plugin.settings.duplicateDetectionSensitivity = value as 'strict' | 'normal' | 'loose';
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName('Auto-remove duplicates')
+        .setDesc(
+          'Automatically remove duplicate titles without asking for confirmation.'
+        )
+        .addToggle((toggle) => {
+          toggle
+            .setValue(this.plugin.settings.autoRemoveDuplicates)
+            .onChange(async (value) => {
+              this.plugin.settings.autoRemoveDuplicates = value;
+              await this.plugin.saveSettings();
+              this.display(); // Re-render to show/hide confirmation option
+            });
+        });
+
+      if (!this.plugin.settings.autoRemoveDuplicates) {
+        new Setting(containerEl)
+          .setName('Confirm before removal')
+          .setDesc(
+            'Show a confirmation dialog before removing duplicate titles from content.'
+          )
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settings.confirmBeforeRemoval)
+              .onChange(async (value) => {
+                this.plugin.settings.confirmBeforeRemoval = value;
+                await this.plugin.saveSettings();
+              });
+          });
+      }
+
+      new Setting(containerEl)
+        .setName('Only exact matches')
+        .setDesc(
+          'Only remove titles that are exactly the same (ignoring case and punctuation). Disables similarity-based detection.'
+        )
+        .addToggle((toggle) => {
+          toggle
+            .setValue(this.plugin.settings.removeOnlyExactMatches)
+            .onChange(async (value) => {
+              this.plugin.settings.removeOnlyExactMatches = value;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
   }
 
   private renderProviderSettings(containerEl: HTMLElement): void {
