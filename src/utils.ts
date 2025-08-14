@@ -1,3 +1,5 @@
+import { DUPLICATE_CONFIG } from './constants';
+
 /**
  * Sanitizes a title to make it a valid filename.
  * - Removes characters forbidden by most operating systems.
@@ -113,8 +115,6 @@ export function detectTitleInContent(
   const matches: import('./types').TitleMatch[] = [];
   const lines = noteContent.split('\n');
   
-  // Import constants
-  const { DUPLICATE_CONFIG } = require('./constants');
   const threshold = DUPLICATE_CONFIG.SIMILARITY_THRESHOLDS[sensitivity];
   
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -218,7 +218,6 @@ export function shouldRemoveMatch(
   match: import('./types').TitleMatch, 
   onlyExactMatches: boolean
 ): boolean {
-  const { DUPLICATE_CONFIG } = require('./constants');
   
   if (onlyExactMatches) {
     return match.similarity >= DUPLICATE_CONFIG.EXACT_MATCH_THRESHOLD;
