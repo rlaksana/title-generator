@@ -1,4 +1,4 @@
-# Enhanced Title Generator v3.0.10
+# Title Generator v3.0.10
 
 > **Latest Update**: Auto version bump enabled - every commit/push increments version automatically. Added **Debug Mode** toggle for troubleshooting logs.
 
@@ -21,7 +21,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 ### Via BRAT (Recommended)
 1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) in Obsidian
 2. Open BRAT settings and click "Add Beta Plugin"
-3. Enter repository: `rlaksana/obsidian-title-generator`
+3. Enter repository: `rlaksana/title-generator`
 4. Click "Add Plugin" and enable it
 
 > **Having BRAT installation issues?** Check our [CDN Troubleshooting Guide](CDN_TROUBLESHOOTING.md) for quick fixes.
@@ -32,8 +32,8 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 3. Enable the plugin in your settings
 
 ### Manual Installation
-1. Download the `main.js` and `manifest.json` files from the latest [GitHub Release](https://github.com/rlaksana/obsidian-title-generator/releases)
-2. Place these files in your vault's `.obsidian/plugins/enhanced-title-generator/` directory
+1. Download the `main.js` and `manifest.json` files from the latest [GitHub Release](https://github.com/rlaksana/title-generator/releases)
+2. Place these files in your vault's `.obsidian/plugins/title-generator/` directory
 3. Reload Obsidian and enable the plugin
 
 ### Installation Troubleshooting
@@ -49,7 +49,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 ## Settings
 
-Open **Settings → Enhanced Title Generator** to configure the plugin.
+Open **Settings → Title Generator** to configure the plugin.
 
 | Setting                      | Description                                                                                             | Default                                                                                                |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |

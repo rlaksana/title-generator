@@ -212,4 +212,4 @@ jobs:
           done
           
           echo "✅ Release verification completed"
-          echo "📋 BRAT Installation: Use repository URL 'rlaksana/obsidian-title-generator'"
+          echo "📋 BRAT Installation: Use repository URL 'rlaksana/title-generator'"

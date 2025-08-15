@@ -1,10 +1,10 @@
 /**
- * Constants for the Enhanced Title Generator plugin
+ * Constants for the Title Generator plugin
  * Centralized location for all hardcoded values
  */
 
-export const PLUGIN_NAME = 'Enhanced Title Generator';
-export const PLUGIN_ID = 'enhanced-title-generator';
+export const PLUGIN_NAME = 'Title Generator';
+export const PLUGIN_ID = 'title-generator';
 
 // API Configuration
 export const API_CONFIG = {

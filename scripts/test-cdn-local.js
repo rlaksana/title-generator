@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Enhanced Title Generator - Local CDN Test');
+console.log('🚀 Title Generator - Local CDN Test');
 console.log('=' .repeat(60));
 
 // Check if required files exist
@@ -68,7 +68,7 @@ try {
     console.log('❌ Missing TitleGeneratorPlugin class');
   }
   
-  if (mainJs.includes('Enhanced Title Generator')) {
+  if (mainJs.includes('Title Generator')) {
     console.log('✅ Contains plugin name');
   } else {
     console.log('❌ Missing plugin name');
@@ -94,7 +94,7 @@ console.log('\n📋 Next Steps:');
 console.log('1. Commit and push changes');
 console.log('2. GitHub Actions will create automatic release');
 console.log('3. Wait 5-10 minutes for CDN propagation');
-console.log('4. Install via BRAT: rlaksana/obsidian-title-generator');
+console.log('4. Install via BRAT: rlaksana/title-generator');
 
 console.log('\n🔧 If CDN issues occur:');
 console.log('- Wait 5-10 minutes for propagation');

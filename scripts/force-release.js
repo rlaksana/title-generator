@@ -59,7 +59,7 @@ function getCurrentVersion() {
  * Force recreate release
  */
 function forceRecreateRelease() {
-  console.log('🚀 Enhanced Title Generator - Force Release');
+  console.log('🚀 Title Generator - Force Release');
   console.log('=' .repeat(60));
   
   try {
@@ -116,7 +116,7 @@ function forceRecreateRelease() {
 This release was recreated to address CDN propagation issues with BRAT installations.
 
 ### For BRAT Users:
-- Use repository: \`rlaksana/obsidian-title-generator\`
+- Use repository: \`rlaksana/title-generator\`
 - If installation fails, wait 5-10 minutes and try again
 - Check plugin compatibility with your Obsidian version
 

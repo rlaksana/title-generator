@@ -42,13 +42,13 @@ Shows available commands and BRAT installation info.
 
 ## 📋 BRAT Installation
 
-**Repository URL**: `rlaksana/obsidian-title-generator`
+**Repository URL**: `rlaksana/title-generator`
 
 ### Step-by-Step:
 1. Install BRAT plugin in Obsidian
 2. Open BRAT settings
 3. Click "Add Beta Plugin"
-4. Enter: `rlaksana/obsidian-title-generator`
+4. Enter: `rlaksana/title-generator`
 5. Click "Add Plugin"
 
 ### If Installation Fails:
@@ -63,8 +63,8 @@ Shows available commands and BRAT installation info.
 ### Check Asset URLs Directly:
 ```bash
 # Replace v3.0.X with actual version
-curl -I https://github.com/rlaksana/obsidian-title-generator/releases/download/v3.0.X/main.js
-curl -I https://github.com/rlaksana/obsidian-title-generator/releases/download/v3.0.X/manifest.json
+curl -I https://github.com/rlaksana/title-generator/releases/download/v3.0.X/main.js
+curl -I https://github.com/rlaksana/title-generator/releases/download/v3.0.X/manifest.json
 ```
 
 ### Expected Response:
@@ -122,7 +122,7 @@ npm run dev
 If CDN issues persist:
 
 1. **Download Files Directly**:
-   - Go to: https://github.com/rlaksana/obsidian-title-generator/releases/latest
+   - Go to: https://github.com/rlaksana/title-generator/releases/latest
    - Download `main.js` and `manifest.json`
 
 2. **Manual Installation**:
@@ -131,22 +131,22 @@ If CDN issues persist:
    cd /path/to/your/vault
    
    # Create plugin directory
-   mkdir -p .obsidian/plugins/enhanced-title-generator
+   mkdir -p .obsidian/plugins/title-generator
    
    # Copy files
-   cp ~/Downloads/main.js .obsidian/plugins/enhanced-title-generator/
-   cp ~/Downloads/manifest.json .obsidian/plugins/enhanced-title-generator/
+   cp ~/Downloads/main.js .obsidian/plugins/title-generator/
+   cp ~/Downloads/manifest.json .obsidian/plugins/title-generator/
    ```
 
 3. **Enable Plugin**:
    - Restart Obsidian
    - Go to Settings → Community Plugins
-   - Enable "Enhanced Title Generator"
+   - Enable "Title Generator"
 
 ## 📞 Support
 
 ### Report Issues:
-- **GitHub Issues**: https://github.com/rlaksana/obsidian-title-generator/issues
+- **GitHub Issues**: https://github.com/rlaksana/title-generator/issues
 - **Include**: CDN check results, error messages, timestamps
 
 ### Quick Diagnostics:

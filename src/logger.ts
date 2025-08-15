@@ -1,5 +1,5 @@
 /**
- * Centralized logging service for the Enhanced Title Generator plugin
+ * Centralized logging service for the Title Generator plugin
  * Controls debug output and provides structured logging
  */
 

@@ -1,5 +1,5 @@
 /**
- * Enhanced TypeScript types for the Enhanced Title Generator plugin
+ * Enhanced TypeScript types for the Title Generator plugin
  */
 
 /**

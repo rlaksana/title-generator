@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-enhanced-title-generator",
+  "name": "title-generator",
   "version": "3.0.10",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "main": "dist/main.js",
@@ -18,7 +18,7 @@
     "check-cdn": "node scripts/check-cdn-status.js",
     "check-local": "node scripts/test-cdn-local.js",
     "force-release": "node scripts/force-release.js",
-    "release-help": "echo 'Available release commands:' && echo '  npm run check-cdn    - Check CDN status and asset accessibility' && echo '  npm run check-local  - Test local files before release' && echo '  npm run force-release - Recreate latest release to fix CDN issues' && echo '  npm run build        - Build plugin assets' && echo 'For BRAT: Use repository rlaksana/obsidian-title-generator'"
+    "release-help": "echo 'Available release commands:' && echo '  npm run check-cdn    - Check CDN status and asset accessibility' && echo '  npm run check-local  - Test local files before release' && echo '  npm run force-release - Recreate latest release to fix CDN issues' && echo '  npm run build        - Build plugin assets' && echo 'For BRAT: Use repository rlaksana/title-generator'"
   },
   "keywords": [
     "obsidian",

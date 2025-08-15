@@ -11,7 +11,7 @@ const path = require('path');
 
 // Configuration
 const REPO_OWNER = 'rlaksana';
-const REPO_NAME = 'obsidian-title-generator';
+const REPO_NAME = 'title-generator';
 const REQUIRED_FILES = ['main.js', 'manifest.json'];
 
 /**
@@ -199,7 +199,7 @@ async function testBRATCompatibility(release) {
  * Main function
  */
 async function main() {
-  console.log('🚀 Enhanced Title Generator - CDN Status Checker');
+  console.log('🚀 Title Generator - CDN Status Checker');
   console.log('=' .repeat(60));
   
   try {

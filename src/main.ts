@@ -111,7 +111,7 @@ export default class TitleGeneratorPlugin extends Plugin {
       }
     `;
     const styleEl = document.createElement('style');
-    styleEl.id = 'enhanced-title-generator-styles';
+    styleEl.id = 'title-generator-styles';
     styleEl.innerHTML = css;
     document.head.appendChild(styleEl);
     this.register(() => styleEl.remove());
