@@ -100,7 +100,7 @@ First paragraph:
 "${firstParagraph}"
 
 ANALYSIS RULES:
-1. Strip away formatting symbols (# - * ** ` emojis) and compare the core meaning
+1. Strip away formatting symbols (# - * ** \` emojis) and compare the core meaning
 2. Only respond "DUPLICATE" if the core content (after removing formatting) literally restates the same information as the title
 3. Respond "DIFFERENT" if:
    - It's a section header introducing new topics
