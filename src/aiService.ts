@@ -110,6 +110,17 @@ export class AIService {
     }
   }
 
+  /**
+   * Make a direct AI call with custom prompt and content.
+   * Used for specific tasks like duplicate detection.
+   * @param prompt The prompt to send to AI
+   * @param content The content to include
+   * @returns Promise with AI response
+   */
+  async makeAICall(prompt: string, content: string = ''): Promise<string> {
+    return await this.callAI(prompt, content);
+  }
+
   private isConfigurationValid(settings: TitleGeneratorSettings): boolean {
     switch (settings.aiProvider) {
       case 'openai':

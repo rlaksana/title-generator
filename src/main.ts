@@ -6,8 +6,8 @@ import { initializeLogger, getLogger, updateLoggerConfig } from './logger';
 import { initializeErrorHandler, getErrorHandler } from './errorHandler';
 import { initializeValidationService, getValidationService } from './validation';
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
-import { detectTitleInContent, removeDuplicatesFromContent, shouldRemoveMatch } from './utils';
-import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress, DuplicateDetectionResult, TitleMatch } from './types';
+import { detectAndRemoveDuplicateWithAI } from './utils';
+import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress } from './types';
 
 
 
@@ -286,117 +286,40 @@ export default class TitleGeneratorPlugin extends Plugin {
     content: string
   ): Promise<{ contentModified: boolean; modifiedContent: string }> {
     try {
-      const sensitivity = this.settings.removeOnlyExactMatches ? 'strict' : this.settings.duplicateDetectionSensitivity;
-      const detectionResult = detectTitleInContent(generatedTitle, content, sensitivity);
-      
-      if (!detectionResult.found) {
-        this.logger.debug(`No duplicate titles found in ${file.path}`);
-        return { contentModified: false, modifiedContent: content };
+      // Use AI-based detection for title duplicates
+      const aiDetectionResult = await this.detectDuplicateWithAI(generatedTitle, content);
+      if (aiDetectionResult.contentModified) {
+        this.logger.info(`AI detected and removed duplicate title content from ${file.path}`);
+        new Notice('Removed duplicate title from note content (AI detection)');
+        return aiDetectionResult;
       }
 
-      this.logger.debug(`Found ${detectionResult.totalMatches} potential duplicate(s) in ${file.path}`);
-      
-      // Filter matches based on settings
-      const matchesToRemove = detectionResult.matches.filter(match => 
-        shouldRemoveMatch(match, this.settings.removeOnlyExactMatches)
-      );
-
-      if (matchesToRemove.length === 0) {
-        this.logger.debug(`No matches meet removal criteria in ${file.path}`);
-        return { contentModified: false, modifiedContent: content };
-      }
-
-      // Handle based on user settings
-      if (this.settings.autoRemoveDuplicates) {
-        // Auto-remove without confirmation
-        const cleanedContent = removeDuplicatesFromContent(content, matchesToRemove);
-        new Notice(`Removed ${matchesToRemove.length} duplicate title(s) from note content`);
-        this.logger.info(`Auto-removed ${matchesToRemove.length} duplicate(s) from ${file.path}`);
-        return { contentModified: true, modifiedContent: cleanedContent };
-      } else if (this.settings.confirmBeforeRemoval) {
-        // Show confirmation dialog
-        const shouldRemove = await this.showDuplicateConfirmationDialog(matchesToRemove, generatedTitle);
-        if (shouldRemove) {
-          const cleanedContent = removeDuplicatesFromContent(content, matchesToRemove);
-          new Notice(`Removed ${matchesToRemove.length} duplicate title(s) from note content`);
-          this.logger.info(`User confirmed removal of ${matchesToRemove.length} duplicate(s) from ${file.path}`);
-          return { contentModified: true, modifiedContent: cleanedContent };
-        } else {
-          this.logger.debug(`User declined to remove duplicates from ${file.path}`);
-          return { contentModified: false, modifiedContent: content };
-        }
-      } else {
-        // Just notify about duplicates found
-        new Notice(`Found ${matchesToRemove.length} duplicate title(s) in note content`);
-        this.logger.info(`Found but did not remove ${matchesToRemove.length} duplicate(s) in ${file.path}`);
-        return { contentModified: false, modifiedContent: content };
-      }
+      // No duplicate title content found
+      this.logger.debug(`No duplicate title content found in ${file.path}`);
+      return { contentModified: false, modifiedContent: content };
     } catch (error) {
       this.errorHandler.handleError(error as Error, { context: 'handle-duplicate-titles', file: file.path });
       return { contentModified: false, modifiedContent: content };
     }
   }
 
-  private async showDuplicateConfirmationDialog(matches: TitleMatch[], generatedTitle: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const modal = new DuplicateConfirmationModal(this.app, matches, generatedTitle, resolve);
-      modal.open();
-    });
-  }
-}
+  private async detectDuplicateWithAI(
+    title: string, 
+    content: string
+  ): Promise<{ contentModified: boolean; modifiedContent: string }> {
+    try {
+      // Create a bound function for AI calls
+      const aiCallFunction = async (prompt: string, content: string): Promise<string> => {
+        return await this.aiService.makeAICall(prompt, content);
+      };
 
-class DuplicateConfirmationModal extends Modal {
-  constructor(
-    app: App, 
-    private matches: TitleMatch[], 
-    private generatedTitle: string,
-    private onResult: (result: boolean) => void
-  ) {
-    super(app);
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-
-    contentEl.createEl('h2', { text: 'Duplicate Titles Detected' });
-    
-    contentEl.createEl('p', { 
-      text: `Found ${this.matches.length} duplicate title(s) similar to "${this.generatedTitle}" in the note content:` 
-    });
-
-    const matchList = contentEl.createEl('ul');
-    this.matches.forEach((match, index) => {
-      const listItem = matchList.createEl('li');
-      listItem.createEl('strong', { text: `Line ${match.lineNumber}: ` });
-      listItem.createEl('code', { text: match.matchedText });
-      listItem.createEl('span', { text: ` (${Math.round(match.similarity * 100)}% similar)` });
-    });
-
-    contentEl.createEl('p', { text: 'Would you like to remove these duplicate titles from the note content?' });
-
-    const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.marginTop = '20px';
-
-    const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
-    cancelButton.addEventListener('click', () => {
-      this.close();
-      this.onResult(false);
-    });
-
-    const confirmButton = buttonContainer.createEl('button', { text: 'Remove Duplicates' });
-    confirmButton.addClass('mod-cta');
-    confirmButton.addEventListener('click', () => {
-      this.close();
-      this.onResult(true);
-    });
+      // Use the AI-based duplicate detection
+      const result = await detectAndRemoveDuplicateWithAI(title, content, aiCallFunction);
+      return result;
+    } catch (error) {
+      this.logger.debug('AI duplicate detection failed, falling back to traditional method:', error);
+      return { contentModified: false, modifiedContent: content };
+    }
   }
 
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
 }
