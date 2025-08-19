@@ -8,6 +8,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 // Configuration
 const REPO_OWNER = 'rlaksana';
@@ -19,7 +20,17 @@ const REQUIRED_FILES = ['main.js', 'manifest.json'];
  */
 function makeRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = https.request(url, options, (res) => {
+    // Parse URL to get proper options for https.request
+    const urlObj = new URL(url);
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: options.headers || {}
+    };
+    
+    const req = https.request(requestOptions, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
@@ -48,7 +59,27 @@ function makeRequest(url, options = {}) {
 async function getLatestRelease() {
   try {
     const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
-    const response = await makeRequest(apiUrl);
+    
+    // Prepare headers with GitHub token if available
+    const headers = {
+      'User-Agent': 'title-generator-cdn-checker',
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    
+    // Add GitHub token if available in environment
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+    
+    const response = await makeRequest(apiUrl, {
+      method: 'GET',
+      headers: headers
+    });
+    
+    if (response.statusCode === 403) {
+      console.log('⚠️  GitHub API rate limit hit. Trying alternative method...');
+      return await getLatestReleaseAlternative();
+    }
     
     if (response.statusCode !== 200) {
       throw new Error(`GitHub API error: ${response.statusCode}`);
@@ -57,7 +88,47 @@ async function getLatestRelease() {
     return JSON.parse(response.data);
   } catch (error) {
     console.error('❌ Failed to fetch latest release:', error.message);
-    throw error;
+    console.log('🔄 Trying alternative method...');
+    return await getLatestReleaseAlternative();
+  }
+}
+
+/**
+ * Alternative method to get release info using gh CLI
+ */
+async function getLatestReleaseAlternative() {
+  try {
+    const { execSync } = require('child_process');
+    
+    console.log('🔄 Using GitHub CLI to get release info...');
+    
+    // Get latest release info using gh CLI, exclude mirror releases
+    const releaseJson = execSync(
+      `gh release list --repo ${REPO_OWNER}/${REPO_NAME} --limit 10 --json tagName,publishedAt,url,assets`,
+      { encoding: 'utf8' }
+    );
+    
+    const releases = JSON.parse(releaseJson);
+    if (!releases || releases.length === 0) {
+      throw new Error('No releases found');
+    }
+    
+    // Find the first non-mirror release
+    const release = releases.find(r => !r.tagName.includes('-mirror')) || releases[0];
+    
+    // Transform to match GitHub API format
+    return {
+      tag_name: release.tagName,
+      published_at: release.publishedAt,
+      html_url: release.url,
+      assets: release.assets.map(asset => ({
+        name: asset.name,
+        browser_download_url: `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${release.tagName}/${asset.name}`
+      }))
+    };
+    
+  } catch (error) {
+    throw new Error(`Failed to get release info: ${error.message}. Make sure 'gh' CLI is installed and authenticated.`);
   }
 }
 
@@ -128,6 +199,35 @@ async function checkAssetAccessibility(assetUrl, assetName) {
 }
 
 /**
+ * Download file content following redirects
+ */
+async function downloadFileContent(url, maxRedirects = 5) {
+  let currentUrl = url;
+  let redirectCount = 0;
+  
+  while (redirectCount < maxRedirects) {
+    const response = await makeRequest(currentUrl, { method: 'GET' });
+    
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      const location = response.headers.location;
+      if (location) {
+        currentUrl = location;
+        redirectCount++;
+        continue;
+      } else {
+        throw new Error(`Redirect without location header: ${response.statusCode}`);
+      }
+    } else if (response.statusCode === 200) {
+      return response.data;
+    } else {
+      throw new Error(`HTTP ${response.statusCode}`);
+    }
+  }
+  
+  throw new Error('Too many redirects');
+}
+
+/**
  * Check GitHub CDN status
  */
 async function checkGitHubCDNStatus() {
@@ -171,8 +271,14 @@ async function testBRATCompatibility(release) {
   }
   
   try {
-    const manifestResponse = await makeRequest(manifestAsset.browser_download_url);
-    const manifest = JSON.parse(manifestResponse.data);
+    const manifestContent = await downloadFileContent(manifestAsset.browser_download_url);
+    
+    if (!manifestContent || manifestContent.trim() === '') {
+      console.log('❌ manifest.json is empty');
+      return false;
+    }
+    
+    const manifest = JSON.parse(manifestContent);
     
     const requiredFields = ['id', 'name', 'version', 'minAppVersion'];
     const missingFields = requiredFields.filter(field => !manifest[field]);
