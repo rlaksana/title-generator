@@ -77,6 +77,16 @@ jobs:
 
           echo "✅ All version files updated to $RELEASE_VERSION"
 
+      - name: 'Commit Version Changes'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add manifest.json package.json versions.json
+          git commit -m "chore: bump version to $RELEASE_VERSION [skip ci]" || echo "No changes to commit"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 'Prepare Release Assets'
         run: |
           echo "🎯 Preparing release assets for $RELEASE_VERSION"
