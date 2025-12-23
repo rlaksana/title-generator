@@ -182,7 +182,20 @@ export const PROVIDER_CONFIG = {
     modelField: 'openAiModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-5-mini', 'o3-pro', 'o3', 'o4-mini', 'gpt-4.1'],
+    defaultModels: [
+      'gpt-5.2', 
+      'gpt-5.1', 
+      'gpt-5', 
+      'gpt-5-mini', 
+      'gpt-5-chat-latest',
+      'gpt-5.1-chat-latest',
+      'o3-pro', 
+      'o3', 
+      'o4-mini', 
+      'gpt-4.1',
+      'gpt-4o',
+      'gpt-4o-mini'
+    ],
   },
   anthropic: {
     name: 'Anthropic',

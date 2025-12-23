@@ -202,6 +202,27 @@ export class AIService {
     if (!settings.openAiApiKey) {
       throw new Error('OpenAI API key is not set.');
     }
+
+    const isReasoningModel =
+      settings.openAiModel.startsWith('o') ||
+      settings.openAiModel.includes('gpt-5');
+
+    const body: any = {
+      model: settings.openAiModel,
+      messages: [{ role: 'user', content: prompt }],
+    };
+
+    // Reasoning models (o1, o3, gpt-5) usually don't support temperature
+    if (!isReasoningModel) {
+      body.temperature = settings.temperature;
+    } else {
+      // For reasoning models, we might want to use max_completion_tokens
+      // instead of max_tokens if needed, but for now we focus on temperature
+      console.log(
+        `Reasoning model detected (${settings.openAiModel}), disabling temperature.`
+      );
+    }
+
     const response = await requestUrl({
       url: 'https://api.openai.com/v1/chat/completions',
       method: 'POST',
@@ -209,11 +230,7 @@ export class AIService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${settings.openAiApiKey}`,
       },
-      body: JSON.stringify({
-        model: settings.openAiModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: settings.temperature,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (response.status !== 200) {
@@ -228,6 +245,28 @@ export class AIService {
     if (!settings.anthropicApiKey) {
       throw new Error('Anthropic API key is not set.');
     }
+
+    const isReasoningModel =
+      settings.anthropicModel.includes('4-5') ||
+      settings.anthropicModel.includes('3-7');
+
+    const body: any = {
+      model: settings.anthropicModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: isReasoningModel ? 4096 : 1024,
+    };
+
+    if (isReasoningModel && settings.anthropicThinkingEnabled) {
+      body.thinking = {
+        type: 'enabled',
+        budget_tokens: settings.anthropicThinkingBudget,
+      };
+      // For Anthropic, temperature must be 1.0 or omitted when thinking is enabled
+      body.temperature = 1.0;
+    } else {
+      body.temperature = settings.temperature;
+    }
+
     const response = await requestUrl({
       url: 'https://api.anthropic.com/v1/messages',
       method: 'POST',
@@ -236,12 +275,7 @@ export class AIService {
         'x-api-key': settings.anthropicApiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model: settings.anthropicModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: settings.temperature,
-        max_tokens: 1024,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (response.status !== 200) {
@@ -250,7 +284,9 @@ export class AIService {
       );
     }
     const data = response.json;
-    return data.content[0]?.text?.trim() ?? '';
+    // Extract text from content, ignoring thinking blocks in the response
+    const textContent = data.content.find((c: any) => c.type === 'text');
+    return textContent?.text?.trim() ?? '';
   }
 
   private async callGoogle(prompt: string): Promise<string> {
@@ -272,6 +308,8 @@ export class AIService {
       generationConfig.thinkingConfig = {
         thinkingLevel: settings.googleThinkingLevel,
       };
+      // Some versions of Gemini reasoning prefer 0 or 1 temperature
+      // but usually 0.7-1.0 is fine. We'll stick to settings unless it fails.
     }
 
     const requestBody = {

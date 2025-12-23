@@ -258,6 +258,10 @@ export interface TitleGeneratorSettings {
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
 
+  // Anthropic Thinking Settings
+  anthropicThinkingEnabled: boolean;
+  anthropicThinkingBudget: number;
+
   // Dynamic Model Caching
   cachedModels: Record<AIProvider, CachedModels>;
 

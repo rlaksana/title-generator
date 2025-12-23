@@ -30,12 +30,16 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   googleApiKey: '',
 
   // Models
-  openAiModel: 'gpt-5-mini',
+  openAiModel: 'gpt-4o-mini',
   anthropicModel: 'claude-haiku-4-5',
   googleModel: 'gemini-3-flash-preview',
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF',
+
+  // Anthropic Thinking Settings
+  anthropicThinkingEnabled: true,
+  anthropicThinkingBudget: 1024,
 
   // Dynamic Model Caching
   cachedModels: {
@@ -392,6 +396,40 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             });
         });
+    }
+
+    // Anthropic specific settings
+    if (provider === 'anthropic') {
+      new Setting(containerEl)
+        .setName('Extended Thinking')
+        .setDesc('Enable reasoning for Claude 4.5+ models.')
+        .addToggle((toggle) => {
+          toggle
+            .setValue(this.plugin.settings.anthropicThinkingEnabled)
+            .onChange(async (value) => {
+              this.plugin.settings.anthropicThinkingEnabled = value;
+              await this.plugin.saveSettings();
+              this.display();
+            });
+        });
+
+      if (this.plugin.settings.anthropicThinkingEnabled) {
+        new Setting(containerEl)
+          .setName('Thinking Budget (Tokens)')
+          .setDesc('Maximum tokens allowed for reasoning.')
+          .addText((text) => {
+            text.inputEl.type = 'number';
+            text
+              .setValue(this.plugin.settings.anthropicThinkingBudget.toString())
+              .onChange(async (value) => {
+                const parsed = parseInt(value, 10);
+                if (!isNaN(parsed)) {
+                  this.plugin.settings.anthropicThinkingBudget = parsed;
+                  await this.plugin.saveSettings();
+                }
+              });
+          });
+      }
     }
   }
 
