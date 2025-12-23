@@ -451,10 +451,18 @@ export class ValidationService {
         break;
         
       case 'google':
-        if (!response.candidates || !Array.isArray(response.candidates) || response.candidates.length === 0) {
+        if (
+          !response.candidates ||
+          !Array.isArray(response.candidates) ||
+          response.candidates.length === 0
+        ) {
           result.valid = false;
           result.errors.push('Invalid Google response format');
-        } else if (!response.candidates[0].content?.parts?.[0]?.text) {
+        } else if (
+          !response.candidates[0].content?.parts?.find(
+            (p: any) => p.text && !p.thought
+          )
+        ) {
           result.valid = false;
           result.errors.push('Google response missing text');
         }

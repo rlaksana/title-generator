@@ -240,6 +240,7 @@ export class AIService {
         model: settings.anthropicModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: settings.temperature,
+        max_tokens: 1024,
       }),
     });
 
@@ -259,11 +260,23 @@ export class AIService {
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
 
+    const generationConfig: any = {
+      temperature: settings.temperature,
+    };
+
+    // Add thinking config for Gemini 3 models if enabled
+    if (
+      settings.googleModel.includes('gemini-3') &&
+      settings.googleThinkingLevel !== 'OFF'
+    ) {
+      generationConfig.thinkingConfig = {
+        thinkingLevel: settings.googleThinkingLevel,
+      };
+    }
+
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: settings.temperature,
-      },
+      generationConfig,
     };
 
     console.log('Calling Google Gemini API.');
@@ -297,8 +310,7 @@ export class AIService {
       !data.candidates ||
       !data.candidates[0] ||
       !data.candidates[0].content ||
-      !data.candidates[0].content.parts ||
-      !data.candidates[0].content.parts[0]
+      !data.candidates[0].content.parts
     ) {
       console.warn('Gemini response is missing expected content.', data);
       // Check for safety ratings, which might indicate a blocked response
@@ -315,8 +327,12 @@ export class AIService {
       return '';
     }
 
-    const extractedText =
-      data.candidates[0].content.parts[0].text.trim() ?? '';
+    // Extract text part, ignoring thinking parts if present
+    const textPart = data.candidates[0].content.parts.find(
+      (part: any) => part.text && !part.thought
+    );
+
+    const extractedText = textPart?.text?.trim() ?? '';
     console.log('Extracted text from Gemini:', extractedText);
     return extractedText;
   }

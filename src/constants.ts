@@ -182,7 +182,7 @@ export const PROVIDER_CONFIG = {
     modelField: 'openAiModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    defaultModels: ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-5-mini', 'o3-pro', 'o3', 'o4-mini', 'gpt-4.1'],
   },
   anthropic: {
     name: 'Anthropic',
@@ -190,7 +190,7 @@ export const PROVIDER_CONFIG = {
     modelField: 'anthropicModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+    defaultModels: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-5', 'claude-opus-4-1', 'claude-sonnet-4-0', 'claude-3-7-sonnet-latest'],
   },
   google: {
     name: 'Google Gemini',
@@ -198,7 +198,7 @@ export const PROVIDER_CONFIG = {
     modelField: 'googleModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'gemini-1.0-pro'],
+    defaultModels: ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
   },
 } as const;
 
