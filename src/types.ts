@@ -79,7 +79,8 @@ export interface GoogleResponse {
   candidates: Array<{
     content: {
       parts: Array<{
-        text: string;
+        text?: string;
+        thought?: boolean;
       }>;
     };
     finishReason: string;
@@ -253,6 +254,9 @@ export interface TitleGeneratorSettings {
   openAiModel: string;
   anthropicModel: string;
   googleModel: string;
+
+  // Google Thinking Settings
+  googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
 
   // Dynamic Model Caching
   cachedModels: Record<AIProvider, CachedModels>;

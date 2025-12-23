@@ -88,9 +88,20 @@ The plugin now automatically detects and loads available models from your config
 
 ### Example Models (Auto-detected)
 
--   **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`, etc.
--   **Anthropic**: `claude-3-opus-20240229`, `claude-3-sonnet-20240229`, `claude-3-haiku-20240307`, etc.
--   **Google Gemini**: `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`, `gemini-1.0-pro`, etc.
+-   **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4`, etc.
+-   **Anthropic**: `claude-sonnet-4-5`, `claude-3-5-sonnet-latest`, `claude-3-opus-20240229`, etc.
+-   **Google Gemini**: `gemini-3-flash-preview`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`, etc.
+
+## Thinking Mode (Google Gemini 3)
+
+For Gemini 3 models, you can enable reasoning/thinking capabilities via the **Thinking Level** setting. This allows the model to process more complex information before generating a title.
+
+| Level | Description |
+| ----- | ----------- |
+| `Off` | Standard generation. |
+| `Low` | Minimal reasoning. |
+| `Medium` | Balanced reasoning. |
+| `High` | Maximum reasoning depth. |
 
 ## Troubleshooting
 

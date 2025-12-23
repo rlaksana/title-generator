@@ -30,9 +30,12 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   googleApiKey: '',
 
   // Models
-  openAiModel: '',
-  anthropicModel: '',
-  googleModel: '',
+  openAiModel: 'gpt-5-mini',
+  anthropicModel: 'claude-haiku-4-5',
+  googleModel: 'gemini-3-flash-preview',
+
+  // Google Thinking Settings
+  googleThinkingLevel: 'OFF',
 
   // Dynamic Model Caching
   cachedModels: {
@@ -367,6 +370,29 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Model selection with reload button
     this.renderModelSelection(containerEl, provider, providerInfo);
+
+    // Google Gemini specific settings
+    if (provider === 'google') {
+      new Setting(containerEl)
+        .setName('Thinking Level')
+        .setDesc('Enable reasoning/thinking for Gemini 3 models.')
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOption('OFF', 'Off')
+            .addOption('LOW', 'Low')
+            .addOption('MEDIUM', 'Medium')
+            .addOption('HIGH', 'High')
+            .setValue(this.plugin.settings.googleThinkingLevel)
+            .onChange(async (value) => {
+              this.plugin.settings.googleThinkingLevel = value as
+                | 'OFF'
+                | 'LOW'
+                | 'MEDIUM'
+                | 'HIGH';
+              await this.plugin.saveSettings();
+            });
+        });
+    }
   }
 
   private async renderModelSelection(

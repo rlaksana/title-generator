@@ -8,17 +8,17 @@ const path = require('path');
 const TEST_CONFIG = {
   openai: {
     apiKey: '',
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-mini',
     url: 'https://api.openai.com/v1/models'
   },
   anthropic: {
     apiKey: '',
-    model: 'claude-3-haiku-20240307',
+    model: 'claude-haiku-4-5',
     url: 'https://api.anthropic.com/v1/models'
   },
   google: {
     apiKey: '',
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-3-flash-preview',
     url: 'https://generativelanguage.googleapis.com/v1beta/models'
   }
 };
@@ -69,10 +69,13 @@ class AIServiceTester {
   async testAnthropicModels() {
     // Anthropic doesn't have a public models API, return static list
     return [
+      'claude-sonnet-4-5',
+      'claude-haiku-4-5',
+      'claude-opus-4-5',
+      'claude-opus-4.1',
+      'claude-sonnet-4-0',
+      'claude-3-7-sonnet-latest',
       'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307',
-      'claude-3-5-sonnet-20240620',
     ];
   }
 
