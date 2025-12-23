@@ -1,6 +1,6 @@
 {
   "name": "title-generator",
-  "version": "3.0.10",
+  "version": "3.0.70",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "main": "dist/main.js",
   "engines": {
