@@ -8,7 +8,7 @@ const path = require('path');
 const TEST_CONFIG = {
   openai: {
     apiKey: '',
-    model: 'gpt-5-mini',
+    model: 'gpt-4o-mini',
     url: 'https://api.openai.com/v1/models'
   },
   anthropic: {
