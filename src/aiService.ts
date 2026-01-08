@@ -1,37 +1,202 @@
 import { Notice, requestUrl } from 'obsidian';
 import { sanitizeFilename, truncateTitle } from './utils';
-import type { TitleGeneratorSettings } from './types';
+import type {
+  TitleGeneratorSettings,
+  AIProviderStrategy,
+  ApiRequestConfig,
+  OpenAIResponse,
+  AnthropicResponse,
+  GoogleResponse,
+} from './types';
+
+/**
+ * OpenAI Strategy Implementation
+ */
+class OpenAIStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+    const model = settings.openAiModel;
+
+    // Detection for reasoning models (o1, o3, gpt-5)
+    const isReasoningModel = model.startsWith('o') || model.includes('gpt-5');
+
+    const body: any = {
+      model: model,
+      messages: [{ role: 'user', content: fullPrompt }],
+    };
+
+    if (isReasoningModel) {
+      // Use max_completion_tokens for newer reasoning models.
+      // Reasoning models need a larger budget because the total includes hidden 'thinking' tokens.
+      // For gpt-5-mini, we provide a generous 5000 token limit for total generation.
+      body.max_completion_tokens = 5000;
+
+      // Handle reasoning_effort for GPT-5 models
+      if (model.includes('gpt-5')) {
+        // gpt-5-mini supports low, medium, high reasoning effort.
+        // We map temperature to these levels to give users some control via settings.
+        if (settings.temperature <= 0.3) body.reasoning_effort = 'low';
+        else if (settings.temperature <= 0.7) body.reasoning_effort = 'medium';
+        else body.reasoning_effort = 'high';
+
+        // Note: temperature is typically unsupported/ignored for these models
+      }
+    } else {
+      body.temperature = settings.temperature;
+      body.max_tokens = settings.maxTitleLength * 4;
+    }
+
+    return {
+      url: 'https://api.openai.com/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.openAiApiKey}`,
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: OpenAIResponse): string {
+    return response.choices[0]?.message?.content?.trim() ?? '';
+  }
+}
+
+/**
+ * Anthropic Strategy Implementation
+ */
+class AnthropicStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+    const model = settings.anthropicModel;
+
+    // Detection for Claude 3.7+ reasoning models
+    const isReasoningModel =
+      model.includes('3-7') ||
+      model.includes('4-5') ||
+      model.includes('haiku-4-5');
+
+    const body: any = {
+      model: model,
+      messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: isReasoningModel ? 4096 : 1024,
+    };
+
+    if (isReasoningModel && settings.anthropicThinkingEnabled) {
+      body.thinking = {
+        type: 'enabled',
+        budget_tokens: settings.anthropicThinkingBudget,
+      };
+      body.temperature = 1.0;
+    } else {
+      body.temperature = settings.temperature;
+    }
+
+    return {
+      url: 'https://api.anthropic.com/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: AnthropicResponse): string {
+    const textContent = response.content.find((c: any) => c.type === 'text');
+    return textContent?.text?.trim() ?? '';
+  }
+}
+
+/**
+ * Google Gemini Strategy Implementation
+ */
+class GoogleStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+    const model = settings.googleModel;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.googleApiKey}`;
+
+    const generationConfig: any = {
+      temperature: settings.temperature,
+    };
+
+    // Detection for Gemini 2.0+ thinking models (including gemini-3)
+    const isThinkingModel =
+      model.includes('thinking') || model.includes('gemini-3');
+
+    if (isThinkingModel && settings.googleThinkingLevel !== 'OFF') {
+      generationConfig.thinkingConfig = {
+        thinkingLevel: settings.googleThinkingLevel,
+      };
+    }
+
+    return {
+      url: url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig,
+      }),
+    };
+  }
+
+  parseResponse(response: GoogleResponse): string {
+    if (
+      !response.candidates ||
+      !response.candidates[0] ||
+      !response.candidates[0].content ||
+      !response.candidates[0].content.parts
+    ) {
+      return '';
+    }
+
+    const textPart = response.candidates[0].content.parts.find(
+      (part: any) => part.text && !part.thought
+    );
+
+    return textPart?.text?.trim() ?? '';
+  }
+}
 
 /**
  * A service class to handle all AI-powered title generation logic.
- * It pulls settings dynamically to ensure it always has the latest values.
+ * It uses the Strategy Pattern to handle different AI providers.
  */
 export class AIService {
-  /**
-   * A function that returns the current plugin settings.
-   */
   private getSettings: () => TitleGeneratorSettings;
+  private strategies: Record<string, AIProviderStrategy>;
 
   constructor(getSettings: () => TitleGeneratorSettings) {
     this.getSettings = getSettings;
+    this.strategies = {
+      openai: new OpenAIStrategy(),
+      anthropic: new AnthropicStrategy(),
+      google: new GoogleStrategy(),
+    };
   }
 
   public async generateTitle(noteContent: string): Promise<string> {
     const settings = this.getSettings();
-    console.log('Starting title generation with settings:', {
-      provider: settings.aiProvider,
-      model:
-        settings.aiProvider === 'openai'
-          ? settings.openAiModel
-          : settings.aiProvider === 'anthropic'
-          ? settings.anthropicModel
-          : settings.googleModel,
-      maxTitleLength: settings.maxTitleLength,
-    });
 
-    // Validate configuration before proceeding
     if (!this.isConfigurationValid(settings)) {
-      console.error('Configuration is not valid. Aborting.');
       return '';
     }
 
@@ -42,7 +207,7 @@ export class AIService {
     );
 
     try {
-      const maxAttempts = 3; // 1 initial call + 2 retries
+      const maxAttempts = 3;
       let title = '';
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -50,381 +215,148 @@ export class AIService {
         let currentContent: string;
 
         if (attempt === 1) {
-          // First attempt: use the initial prompt
-          console.log(`Title generation attempt ${attempt}/${maxAttempts}`);
           currentPrompt = initialPrompt;
           currentContent = content;
         } else {
-          // Retry attempts: use the refinement prompt
           new Notice(`Title still too long. Refining... (Attempt ${attempt})`);
-          console.log(`Title still too long. Refining... (Attempt ${attempt})`);
           currentPrompt = settings.refinePrompt
             .replace('{max_length}', settings.maxTitleLength.toString())
-            .replace('{title}', title); // Use the previous (long) title
-          currentContent = ''; // No main content needed for refinement
+            .replace('{title}', title);
+          currentContent = '';
         }
 
         const rawTitle = await this.callAI(currentPrompt, currentContent);
         title = this.cleanAIResponse(rawTitle);
-        console.log(`Attempt ${attempt} raw title:`, rawTitle);
-        console.log(`Attempt ${attempt} cleaned title:`, title);
 
-        // If the title is valid, break the loop
         if (title.length > 0 && title.length <= settings.maxTitleLength) {
-          console.log(`Valid title found on attempt ${attempt}.`);
           break;
         }
       }
 
-      // Final processing
       let processedTitle = title;
-      if (settings.lowerCaseTitles) {
+      if (settings.lowerCaseTitles)
         processedTitle = processedTitle.toLowerCase();
-      }
-      if (settings.removeForbiddenChars) {
+      if (settings.removeForbiddenChars)
         processedTitle = sanitizeFilename(processedTitle);
-      }
 
-      console.log('Final processed title:', processedTitle);
-      // Final safeguard truncation
       return truncateTitle(processedTitle, settings.maxTitleLength);
     } catch (error) {
-      console.error('Title Generation Error:', error);
-
-      // Provide more helpful error messages
-      if (error.message.includes('API key is not set')) {
-        new Notice(
-          `Please set your ${settings.aiProvider.toUpperCase()} API key in plugin settings.`,
-          8000
-        );
-      } else if (error.message.includes('API error')) {
-        new Notice(
-          `AI service error: ${error.message}. Check your API key and internet connection.`,
-          6000
-        );
-      } else {
-        new Notice(`Title generation failed: ${error.message}`, 5000);
-      }
-
-      return ''; // Return empty string on error
+      this.handleError(error, settings);
+      return '';
     }
   }
 
-  /**
-   * Make a direct AI call with custom prompt and content.
-   * Used for specific tasks like duplicate detection.
-   * @param prompt The prompt to send to AI
-   * @param content The content to include
-   * @returns Promise with AI response
-   */
   async makeAICall(prompt: string, content: string = ''): Promise<string> {
     return await this.callAI(prompt, content);
   }
 
-  private isConfigurationValid(settings: TitleGeneratorSettings): boolean {
-    switch (settings.aiProvider) {
-      case 'openai':
-        if (!settings.openAiApiKey.trim()) {
-          new Notice(
-            'OpenAI API key is not set. Please configure it in plugin settings.',
-            8000
-          );
-          return false;
-        }
-        if (!settings.openAiModel) {
-          new Notice(
-            'OpenAI model is not selected. Please select a model in the plugin settings.',
-            8000
-          );
-          return false;
-        }
-        break;
-      case 'anthropic':
-        if (!settings.anthropicApiKey.trim()) {
-          new Notice(
-            'Anthropic API key is not set. Please configure it in plugin settings.',
-            8000
-          );
-          return false;
-        }
-        if (!settings.anthropicModel) {
-          new Notice(
-            'Anthropic model is not selected. Please select a model in the plugin settings.',
-            8000
-          );
-          return false;
-        }
-        break;
-      case 'google':
-        if (!settings.googleApiKey.trim()) {
-          new Notice(
-            'Google Gemini API key is not set. Please configure it in plugin settings.',
-            8000
-          );
-          return false;
-        }
-        if (!settings.googleModel) {
-          new Notice(
-            'Google Gemini model is not selected. Please select a model in the plugin settings.',
-            8000
-          );
-          return false;
-        }
-        break;
-      default:
-        new Notice(
-          'Invalid AI provider selected. Please check plugin settings.',
-          5000
-        );
-        return false;
+  private async callAI(prompt: string, content: string): Promise<string> {
+    const settings = this.getSettings();
+    const strategy = this.strategies[settings.aiProvider];
+
+    if (!strategy) {
+      throw new Error(`Unsupported AI provider: ${settings.aiProvider}`);
     }
+
+    const config = strategy.buildRequest(prompt, content, settings);
+    const response = await requestUrl(config);
+
+    if (response.status !== 200) {
+      throw new Error(`API error (${response.status}): ${response.text}`);
+    }
+
+    return strategy.parseResponse(response.json);
+  }
+
+  private isConfigurationValid(settings: TitleGeneratorSettings): boolean {
+    const provider = settings.aiProvider;
+    const keys = {
+      openai: {
+        key: settings.openAiApiKey,
+        model: settings.openAiModel,
+        name: 'OpenAI',
+      },
+      anthropic: {
+        key: settings.anthropicApiKey,
+        model: settings.anthropicModel,
+        name: 'Anthropic',
+      },
+      google: {
+        key: settings.googleApiKey,
+        model: settings.googleModel,
+        name: 'Google Gemini',
+      },
+    };
+
+    const config = (keys as any)[provider];
+    if (!config) {
+      new Notice('Invalid AI provider selected.');
+      return false;
+    }
+
+    if (!config.key.trim()) {
+      new Notice(`${config.name} API key is not set.`, 8000);
+      return false;
+    }
+
+    if (!config.model) {
+      new Notice(`${config.name} model is not selected.`, 8000);
+      return false;
+    }
+
     return true;
   }
 
-  private async callAI(prompt: string, content: string): Promise<string> {
-    const settings = this.getSettings();
-    const fullPrompt = `${prompt}\n\n${content}`.trim();
+  private handleError(error: any, settings: TitleGeneratorSettings) {
+    console.error('Title Generation Error:', error);
+    const message = error.message || '';
 
-    switch (settings.aiProvider) {
-      case 'openai':
-        return this.callOpenAI(fullPrompt);
-      case 'anthropic':
-        return this.callAnthropic(fullPrompt);
-      case 'google':
-        return this.callGoogle(fullPrompt);
-      default:
-        throw new Error('Unsupported AI provider selected.');
-    }
-  }
-
-  private async callOpenAI(prompt: string): Promise<string> {
-    const settings = this.getSettings();
-    if (!settings.openAiApiKey) {
-      throw new Error('OpenAI API key is not set.');
-    }
-
-    const isReasoningModel =
-      settings.openAiModel.startsWith('o') ||
-      settings.openAiModel.includes('gpt-5');
-
-    const body: any = {
-      model: settings.openAiModel,
-      messages: [{ role: 'user', content: prompt }],
-    };
-
-    // Reasoning models (o1, o3, gpt-5) usually don't support temperature
-    if (!isReasoningModel) {
-      body.temperature = settings.temperature;
+    if (message.includes('API key is not set')) {
+      new Notice(
+        `Please set your ${settings.aiProvider.toUpperCase()} API key in settings.`,
+        8000
+      );
+    } else if (message.includes('API error')) {
+      new Notice(
+        `AI service error: ${message}. Check key and connection.`,
+        6000
+      );
     } else {
-      // For reasoning models, we might want to use max_completion_tokens
-      // instead of max_tokens if needed, but for now we focus on temperature
-      console.log(
-        `Reasoning model detected (${settings.openAiModel}), disabling temperature.`
-      );
+      new Notice(`Title generation failed: ${message}`, 5000);
     }
-
-    const response = await requestUrl({
-      url: 'https://api.openai.com/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.openAiApiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (response.status !== 200) {
-      throw new Error(`OpenAI API error (${response.status}): ${response.text}`);
-    }
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() ?? '';
   }
 
-  private async callAnthropic(prompt: string): Promise<string> {
-    const settings = this.getSettings();
-    if (!settings.anthropicApiKey) {
-      throw new Error('Anthropic API key is not set.');
-    }
-
-    const isReasoningModel =
-      settings.anthropicModel.includes('4-5') ||
-      settings.anthropicModel.includes('3-7');
-
-    const body: any = {
-      model: settings.anthropicModel,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: isReasoningModel ? 4096 : 1024,
-    };
-
-    if (isReasoningModel && settings.anthropicThinkingEnabled) {
-      body.thinking = {
-        type: 'enabled',
-        budget_tokens: settings.anthropicThinkingBudget,
-      };
-      // For Anthropic, temperature must be 1.0 or omitted when thinking is enabled
-      body.temperature = 1.0;
-    } else {
-      body.temperature = settings.temperature;
-    }
-
-    const response = await requestUrl({
-      url: 'https://api.anthropic.com/v1/messages',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': settings.anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (response.status !== 200) {
-      throw new Error(
-        `Anthropic API error (${response.status}): ${response.text}`
-      );
-    }
-    const data = response.json;
-    // Extract text from content, ignoring thinking blocks in the response
-    const textContent = data.content.find((c: any) => c.type === 'text');
-    return textContent?.text?.trim() ?? '';
-  }
-
-  private async callGoogle(prompt: string): Promise<string> {
-    const settings = this.getSettings();
-    if (!settings.googleApiKey) {
-      throw new Error('Google Gemini API key is not set.');
-    }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.googleModel}:generateContent?key=${settings.googleApiKey}`;
-
-    const generationConfig: any = {
-      temperature: settings.temperature,
-    };
-
-    // Add thinking config for Gemini 3 models if enabled
-    if (
-      settings.googleModel.includes('gemini-3') &&
-      settings.googleThinkingLevel !== 'OFF'
-    ) {
-      generationConfig.thinkingConfig = {
-        thinkingLevel: settings.googleThinkingLevel,
-      };
-      // Some versions of Gemini reasoning prefer 0 or 1 temperature
-      // but usually 0.7-1.0 is fine. We'll stick to settings unless it fails.
-    }
-
-    const requestBody = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig,
-    };
-
-    console.log('Calling Google Gemini API.');
-    console.log(
-      'Gemini Request URL (key hidden):',
-      url.replace(/key=([^&]+)/, 'key=...')
-    );
-    console.log('Gemini Request Body:', JSON.stringify(requestBody, null, 2));
-
-    const response = await requestUrl({
-      url,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('Gemini Response Status:', response.status);
-    console.log('Gemini Raw Response Body:', response.text);
-
-    if (response.status !== 200) {
-      console.error('Google Gemini API error. Response:', response.text);
-      throw new Error(
-        `Google Gemini API error (${response.status}): ${response.text}`
-      );
-    }
-    const data = response.json;
-
-    if (
-      !data.candidates ||
-      !data.candidates[0] ||
-      !data.candidates[0].content ||
-      !data.candidates[0].content.parts
-    ) {
-      console.warn('Gemini response is missing expected content.', data);
-      // Check for safety ratings, which might indicate a blocked response
-      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-        new Notice(
-          'Title generation blocked by Google for safety reasons.',
-          6000
-        );
-        console.error(
-          'Gemini response blocked due to safety ratings:',
-          data.candidates[0].safetyRatings
-        );
-      }
-      return '';
-    }
-
-    // Extract text part, ignoring thinking parts if present
-    const textPart = data.candidates[0].content.parts.find(
-      (part: any) => part.text && !part.thought
-    );
-
-    const extractedText = textPart?.text?.trim() ?? '';
-    console.log('Extracted text from Gemini:', extractedText);
-    return extractedText;
-  }
-
-  /**
-   * Clean up AI response to extract just the title
-   */
   private cleanAIResponse(response: string): string {
     if (!response) return '';
+    let text = response.trim();
 
-    let textToClean = response.trim();
+    // Remove thinking blocks
+    text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
-    // If the entire response is wrapped in a <think> block,
-    // extract the content from within the block to be cleaned.
-    const thinkMatch = textToClean.match(/^<think>([\s\S]*)<\/think>$/);
-    if (thinkMatch && thinkMatch[1]) {
-      textToClean = thinkMatch[1].trim();
-    }
-
-    // Remove any remaining thinking blocks.
-    textToClean = textToClean.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-    // Find the most likely candidate for the title.
-    // The best candidate is usually on its own line.
-    const lines = textToClean
+    const lines = text
       .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    let best = '';
 
-    let bestCandidate = '';
+    const fillerRegex =
+      /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Sure, here|I'll|I would|Based on)/i;
+
     for (const line of lines) {
-      // The best line is one that doesn't have conversational filler.
-      if (
-        !/^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Sure, here|I'll|I would|Based on)/i.test(
-          line
-        )
-      ) {
-        bestCandidate = line;
+      if (!fillerRegex.test(line)) {
+        best = line;
         break;
       }
     }
 
-    // If no good candidate was found, fall back to the first line.
-    if (!bestCandidate && lines.length > 0) {
-      bestCandidate = lines[0];
-    }
+    if (!best && lines.length > 0) best = lines[0];
 
-    // Final polish: remove common prefixes and quotes.
-    let finalTitle = bestCandidate.replace(
-      /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:)\s*/i,
-      ''
-    );
-    finalTitle = finalTitle.replace(/["']/g, '');
-
-    return finalTitle.trim();
+    return best
+      .replace(
+        /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:)\s*/i,
+        ''
+      )
+      .replace(/["']/g, '')
+      .trim();
   }
 }

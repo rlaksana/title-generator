@@ -1,0 +1,11 @@
+{
+  "title": "Supporting Next-Gen Reasoning Models (2025/2026)",
+  "content": "Define the architectural approach for handling the unique API requirements of reasoning-capable models (GPT-5, Claude 4.5, Gemini 3) while maintaining backward compatibility and ensuring stable filename generation.",
+  "scope": "src/aiService.ts, src/modelService.ts, src/types.ts",
+  "kind": "episteme",
+  "rationale": {
+    "anomaly": "New models (GPT-5, Claude 4.5, Gemini 3) introduce incompatible parameters (max_completion_tokens, budget_tokens, thinkingLevel) and behaviors (temperature constraints) that break the current generic API call logic.",
+    "approach": "Establish a robust mechanism to map model-specific capabilities to provider-specific API shapes.",
+    "alternatives_rejected": []
+  }
+}

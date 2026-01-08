@@ -174,7 +174,7 @@ export interface BatchOperationProgress {
 /**
  * Plugin event types
  */
-export type PluginEventType = 
+export type PluginEventType =
   | 'title-generated'
   | 'file-renamed'
   | 'settings-changed'
@@ -238,6 +238,18 @@ export interface ContentModificationOptions {
   removeAllMatches: boolean;
   preserveFormatting: boolean;
   confirmBeforeRemoval: boolean;
+}
+
+/**
+ * Interface for AI provider strategies
+ */
+export interface AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig;
+  parseResponse(response: any): string;
 }
 
 /**

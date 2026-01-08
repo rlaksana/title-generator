@@ -1,0 +1,12 @@
+{
+  "title": "Provider-Specific Strategy Pattern for Request Construction",
+  "content": "Introduce 'ProviderStrategy' interfaces for OpenAI, Anthropic, and Google. Each strategy handles its own parameter mapping and response cleaning. This isolates the logic for 'thinking' blocks and 'reasoning_content' fields, which vary wildly between providers. The main AIService becomes a clean orchestrator.",
+  "scope": "src/aiService.ts (refactor)",
+  "kind": "system",
+  "decision_context": "ai-provider-access-strategy",
+  "rationale": {
+    "anomaly": "AIService contains deeply nested, provider-specific conditional logic that is hard to test and maintain.",
+    "approach": "Use the Strategy Pattern to encapsulate provider-specific API nuances.",
+    "alternatives_rejected": []
+  }
+}

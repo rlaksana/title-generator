@@ -55,7 +55,7 @@ export class ErrorHandler {
    */
   public handleError(error: Error | TitleGeneratorError, context?: any): void {
     const processedError = this.processError(error, context);
-    
+
     // Log the error
     this.logger.error('Error occurred', {
       message: processedError.message,
@@ -73,14 +73,17 @@ export class ErrorHandler {
   /**
    * Process raw errors into TitleGeneratorError format
    */
-  private processError(error: Error | TitleGeneratorError, context?: any): TitleGeneratorError {
+  private processError(
+    error: Error | TitleGeneratorError,
+    context?: any
+  ): TitleGeneratorError {
     if (error instanceof TitleGeneratorError) {
       return error;
     }
 
     // Analyze error message to determine type and create appropriate user message
     const errorMessage = error.message.toLowerCase();
-    
+
     // API-related errors
     if (errorMessage.includes('api key')) {
       return new TitleGeneratorError(
@@ -160,7 +163,11 @@ export class ErrorHandler {
     }
 
     // Generation-related errors
-    if (errorMessage.includes('model') && errorMessage.includes('not') && errorMessage.includes('selected')) {
+    if (
+      errorMessage.includes('model') &&
+      errorMessage.includes('not') &&
+      errorMessage.includes('selected')
+    ) {
       return new TitleGeneratorError(
         error.message,
         'MODEL_NOT_SELECTED',
@@ -233,12 +240,12 @@ export class ErrorHandler {
       case 'UNAUTHORIZED':
       case 'FORBIDDEN':
         return UI_CONFIG.NOTIFICATION_DURATION.LONG;
-      
+
       case 'RATE_LIMIT':
       case 'TIMEOUT':
       case 'NETWORK_ERROR':
         return UI_CONFIG.NOTIFICATION_DURATION.MEDIUM;
-      
+
       default:
         return UI_CONFIG.NOTIFICATION_DURATION.SHORT;
     }
@@ -247,7 +254,10 @@ export class ErrorHandler {
   /**
    * Create a configuration error
    */
-  public createConfigurationError(message: string, provider?: AIProvider): TitleGeneratorError {
+  public createConfigurationError(
+    message: string,
+    provider?: AIProvider
+  ): TitleGeneratorError {
     return new TitleGeneratorError(
       message,
       'CONFIGURATION_ERROR',
@@ -280,7 +290,10 @@ export class ErrorHandler {
   /**
    * Create a validation error
    */
-  public createValidationError(message: string, field?: string): TitleGeneratorError {
+  public createValidationError(
+    message: string,
+    field?: string
+  ): TitleGeneratorError {
     return new TitleGeneratorError(
       message,
       'VALIDATION_ERROR',
@@ -294,7 +307,10 @@ export class ErrorHandler {
   /**
    * Create a generation error
    */
-  public createGenerationError(message: string, provider?: AIProvider): TitleGeneratorError {
+  public createGenerationError(
+    message: string,
+    provider?: AIProvider
+  ): TitleGeneratorError {
     return new TitleGeneratorError(
       message,
       'GENERATION_ERROR',
@@ -308,13 +324,18 @@ export class ErrorHandler {
   /**
    * Handle multiple errors (for batch operations)
    */
-  public handleMultipleErrors(errors: (Error | TitleGeneratorError)[], context?: any): void {
-    const processedErrors = errors.map(error => this.processError(error, context));
-    
+  public handleMultipleErrors(
+    errors: (Error | TitleGeneratorError)[],
+    context?: any
+  ): void {
+    const processedErrors = errors.map((error) =>
+      this.processError(error, context)
+    );
+
     // Log all errors
     this.logger.error('Multiple errors occurred', {
       errorCount: processedErrors.length,
-      errors: processedErrors.map(e => ({
+      errors: processedErrors.map((e) => ({
         code: e.code,
         message: e.message,
         provider: e.provider,
@@ -324,8 +345,8 @@ export class ErrorHandler {
 
     // Show summarized notification
     const errorCount = processedErrors.length;
-    const uniqueTypes = [...new Set(processedErrors.map(e => e.code))];
-    
+    const uniqueTypes = [...new Set(processedErrors.map((e) => e.code))];
+
     if (uniqueTypes.length === 1) {
       new Notice(
         `${errorCount} operations failed: ${processedErrors[0].userMessage}`,
@@ -344,14 +365,21 @@ export class ErrorHandler {
    */
   public isRetryableError(error: Error | TitleGeneratorError): boolean {
     if (error instanceof TitleGeneratorError) {
-      return ['TIMEOUT', 'NETWORK_ERROR', 'RATE_LIMIT', 'SERVER_ERROR'].includes(error.code);
+      return [
+        'TIMEOUT',
+        'NETWORK_ERROR',
+        'RATE_LIMIT',
+        'SERVER_ERROR',
+      ].includes(error.code);
     }
-    
+
     const message = error.message.toLowerCase();
-    return message.includes('timeout') || 
-           message.includes('network') || 
-           message.includes('rate limit') || 
-           message.includes('server error');
+    return (
+      message.includes('timeout') ||
+      message.includes('network') ||
+      message.includes('rate limit') ||
+      message.includes('server error')
+    );
   }
 }
 
@@ -371,7 +399,9 @@ export function initializeErrorHandler(): ErrorHandler {
  */
 export function getErrorHandler(): ErrorHandler {
   if (!errorHandlerInstance) {
-    throw new Error('ErrorHandler not initialized. Call initializeErrorHandler first.');
+    throw new Error(
+      'ErrorHandler not initialized. Call initializeErrorHandler first.'
+    );
   }
   return errorHandlerInstance;
 }

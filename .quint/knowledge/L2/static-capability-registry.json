@@ -1,0 +1,10 @@
+{
+  "title": "Static Model Capability Registry",
+  "content": "Implement a centralized registry (e.g., in constants.ts or a new metadata file) that maps model ID patterns to specific capabilities: 'REASONING', 'THINKING_BUDGET', 'REASONING_EFFORT'. The ModelService enriches fetched models with these flags, and the AIService uses a generic 'buildRequest' method that constructs the body based on these flags rather than checking model names directly.",
+  "scope": "src/modelService.ts, src/aiService.ts, src/types.ts",
+  "kind": "system",
+  "decision_context": "next-gen-reasoning-support",
+  "test_type": "internal",
+  "result": "PASS: Prototype script 'test-next-gen-api.js' confirmed that a capability registry can effectively drive different API parameters for GPT-5 and Claude 4.5.",
+  "verdict": "PASS"
+}

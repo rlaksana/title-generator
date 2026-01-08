@@ -11,7 +11,7 @@ export const API_CONFIG = {
   TIMEOUT: 30000, // 30 seconds
   MAX_RETRIES: 3,
   RETRY_DELAY: 1000, // 1 second
-  
+
   // API Endpoints
   OPENAI: {
     BASE_URL: 'https://api.openai.com/v1',
@@ -21,7 +21,7 @@ export const API_CONFIG = {
       'Content-Type': 'application/json',
     },
   },
-  
+
   ANTHROPIC: {
     BASE_URL: 'https://api.anthropic.com/v1',
     MESSAGES: '/messages',
@@ -31,7 +31,7 @@ export const API_CONFIG = {
       'Content-Type': 'application/json',
     },
   },
-  
+
   GOOGLE: {
     BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
     MODELS: '/models',
@@ -48,7 +48,7 @@ export const MODEL_CONFIG = {
   MIN_TEMPERATURE: 0.0,
   MAX_TEMPERATURE: 1.0,
   TEMPERATURE_STEP: 0.01,
-  
+
   // Model filtering
   OPENAI_FILTER: 'gpt',
   ANTHROPIC_FILTER: 'claude',
@@ -63,17 +63,19 @@ export const TITLE_CONFIG = {
   DEFAULT_MAX_CONTENT_LENGTH: 2000,
   MIN_MAX_CONTENT_LENGTH: 100,
   MAX_MAX_CONTENT_LENGTH: 10000,
-  
+
   // Generation attempts
   MAX_GENERATION_ATTEMPTS: 3,
-  
+
   // Default prompts
-  DEFAULT_PROMPT: 'Create a concise title for this text. Respond with ONLY the title - no explanations, quotes, or extra text. Maximum {max_length} characters.',
-  DEFAULT_REFINE_PROMPT: 'Make this title shorter (under {max_length} characters): "{title}". Respond with ONLY the new title.',
-  
+  DEFAULT_PROMPT:
+    'Create a concise title for this text. Respond with ONLY the title - no explanations, quotes, or extra text. Maximum {max_length} characters.',
+  DEFAULT_REFINE_PROMPT:
+    'Make this title shorter (under {max_length} characters): "{title}". Respond with ONLY the new title.',
+
   // Forbidden filename characters (OS-specific)
   FORBIDDEN_CHARS: /[<>:"\/\\|?*\x00-\x1F]/g,
-  
+
   // Fallback title
   FALLBACK_TITLE: 'Untitled',
 } as const;
@@ -86,14 +88,14 @@ export const UI_CONFIG = {
     MEDIUM: 5000,
     LONG: 8000,
   },
-  
+
   // Loading states
   LOADING_TIMEOUT: 10000, // 10 seconds
-  
+
   // Search/dropdown configuration
   SEARCH_DEBOUNCE: 300,
   MAX_DROPDOWN_HEIGHT: 200,
-  
+
   // CSS Classes
   CSS_CLASSES: {
     SEARCH_CONTAINER: 'model-search-container',
@@ -108,24 +110,26 @@ export const UI_CONFIG = {
 export const ERROR_MESSAGES = {
   // Configuration errors
   NO_API_KEY: 'API key is not set. Please configure it in plugin settings.',
-  NO_MODEL_SELECTED: 'Model is not selected. Please select a model in the plugin settings.',
-  INVALID_PROVIDER: 'Invalid AI provider selected. Please check plugin settings.',
-  
+  NO_MODEL_SELECTED:
+    'Model is not selected. Please select a model in the plugin settings.',
+  INVALID_PROVIDER:
+    'Invalid AI provider selected. Please check plugin settings.',
+
   // API errors
   API_ERROR: 'API service error. Check your API key and internet connection.',
   NETWORK_ERROR: 'Network error. Please check your internet connection.',
   TIMEOUT_ERROR: 'Request timed out. Please try again.',
   RATE_LIMIT_ERROR: 'Rate limit exceeded. Please wait and try again.',
-  
+
   // Generation errors
   GENERATION_FAILED: 'Title generation failed. Please try again.',
   EMPTY_CONTENT: 'Note is empty. Cannot generate title.',
   INVALID_RESPONSE: 'Invalid response from AI service.',
-  
+
   // File operation errors
   FILE_NOT_FOUND: 'File not found or cannot be accessed.',
   RENAME_FAILED: 'Failed to rename file. Please try again.',
-  
+
   // Generic errors
   UNEXPECTED_ERROR: 'An unexpected error occurred. Please try again.',
   CONFIGURATION_ERROR: 'Configuration error. Please check your settings.',
@@ -146,19 +150,19 @@ export const VALIDATION_RULES = {
     MAX_LENGTH: 200,
     PATTERN: /^[a-zA-Z0-9\-_\.]+$/,
   },
-  
+
   MODEL_NAME: {
     MIN_LENGTH: 1,
     MAX_LENGTH: 100,
     PATTERN: /^[a-zA-Z0-9\-_\.]+$/,
   },
-  
+
   PROMPT: {
     MIN_LENGTH: 10,
     MAX_LENGTH: 1000,
     REQUIRED_PLACEHOLDER: '{max_length}',
   },
-  
+
   REFINE_PROMPT: {
     MIN_LENGTH: 10,
     MAX_LENGTH: 1000,
@@ -183,18 +187,18 @@ export const PROVIDER_CONFIG = {
     requiresApiKey: true,
     supportsTemperature: true,
     defaultModels: [
-      'gpt-5.2', 
-      'gpt-5.1', 
-      'gpt-5', 
-      'gpt-5-mini', 
+      'gpt-5.2',
+      'gpt-5.1',
+      'gpt-5',
+      'gpt-5-mini',
       'gpt-5-chat-latest',
       'gpt-5.1-chat-latest',
-      'o3-pro', 
-      'o3', 
-      'o4-mini', 
+      'o3-pro',
+      'o3',
+      'o4-mini',
       'gpt-4.1',
       'gpt-4o',
-      'gpt-4o-mini'
+      'gpt-4o-mini',
     ],
   },
   anthropic: {
@@ -203,7 +207,14 @@ export const PROVIDER_CONFIG = {
     modelField: 'anthropicModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-5', 'claude-opus-4-1', 'claude-sonnet-4-0', 'claude-3-7-sonnet-latest'],
+    defaultModels: [
+      'claude-sonnet-4-5',
+      'claude-haiku-4-5',
+      'claude-opus-4-5',
+      'claude-opus-4-1',
+      'claude-sonnet-4-0',
+      'claude-3-7-sonnet-latest',
+    ],
   },
   google: {
     name: 'Google Gemini',
@@ -211,16 +222,22 @@ export const PROVIDER_CONFIG = {
     modelField: 'googleModel',
     requiresApiKey: true,
     supportsTemperature: true,
-    defaultModels: ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+    defaultModels: [
+      'gemini-3-pro-preview',
+      'gemini-3-flash-preview',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+    ],
   },
 } as const;
 
 // Regular expressions for cleaning AI responses
 export const RESPONSE_CLEANING = {
   THINK_TAGS: /<think>[\s\S]*?<\/think>/g,
-  PREFIXES: /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Sure, here|I'll|I would|Based on)/i,
+  PREFIXES:
+    /^(Title:|Generated title:|Suggested title:|The title:|A title:|Here's the title:|Sure, here|I'll|I would|Based on)/i,
   QUOTES: /["']/g,
   MULTIPLE_SPACES: /\s+/g,
   LEADING_TRAILING_DOTS: /^[ .]+|[ .]+$/g,
 } as const;
-

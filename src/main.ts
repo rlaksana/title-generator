@@ -1,20 +1,36 @@
-import { App, Editor, Notice, Plugin, TFile, normalizePath, Modal } from 'obsidian';
+import {
+  App,
+  Editor,
+  Notice,
+  Plugin,
+  TFile,
+  normalizePath,
+  Modal,
+} from 'obsidian';
 import path from 'path-browserify';
 import { AIService } from './aiService';
 import { DEFAULT_SETTINGS, TitleGeneratorSettingTab } from './settings';
 import { initializeLogger, getLogger, updateLoggerConfig } from './logger';
 import { initializeErrorHandler, getErrorHandler } from './errorHandler';
-import { initializeValidationService, getValidationService } from './validation';
+import {
+  initializeValidationService,
+  getValidationService,
+} from './validation';
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
 import { detectAndRemoveDuplicateWithAI } from './utils';
-import type { TitleGeneratorSettings, FileOperationResult, BatchOperationProgress } from './types';
-
-
+import type {
+  TitleGeneratorSettings,
+  FileOperationResult,
+  BatchOperationProgress,
+} from './types';
 
 export default class TitleGeneratorPlugin extends Plugin {
   settings: TitleGeneratorSettings;
   aiService: AIService;
-  private logger = initializeLogger({ debugMode: false, pluginName: PLUGIN_NAME });
+  private logger = initializeLogger({
+    debugMode: false,
+    pluginName: PLUGIN_NAME,
+  });
   private errorHandler = initializeErrorHandler();
   private validationService = initializeValidationService();
 
@@ -30,45 +46,49 @@ export default class TitleGeneratorPlugin extends Plugin {
       this.aiService = new AIService(() => this.settings);
 
       this.addCommand({
-      id: 'generate-title',
-      name: 'Generate title for current note',
-      editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
-    });
+        id: 'generate-title',
+        name: 'Generate title for current note',
+        editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
+      });
 
-    this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file) => {
-        if (file instanceof TFile && file.extension === 'md') {
-          menu.addItem((item) =>
-            item
-              .setTitle('Generate title')
-              .setIcon('lucide-edit-3')
-              .onClick(() => this.generateTitleForFile(file))
-          );
-        }
-      })
-    );
+      this.registerEvent(
+        this.app.workspace.on('file-menu', (menu, file) => {
+          if (file instanceof TFile && file.extension === 'md') {
+            menu.addItem((item) =>
+              item
+                .setTitle('Generate title')
+                .setIcon('lucide-edit-3')
+                .onClick(() => this.generateTitleForFile(file))
+            );
+          }
+        })
+      );
 
-    this.registerEvent(
-      this.app.workspace.on('files-menu', (menu, files) => {
-        const markdownFiles = files.filter(
-          (f) => f instanceof TFile && f.extension === 'md'
-        ) as TFile[];
+      this.registerEvent(
+        this.app.workspace.on('files-menu', (menu, files) => {
+          const markdownFiles = files.filter(
+            (f) => f instanceof TFile && f.extension === 'md'
+          ) as TFile[];
 
-        if (markdownFiles.length > 0) {
-          menu.addItem((item) =>
-            item
-              .setTitle(`Generate titles for ${markdownFiles.length} notes`)
-              .setIcon('lucide-edit-3')
-              .onClick(() => this.generateTitlesForMultipleFiles(markdownFiles))
-          );
-        }
-      })
-    );
+          if (markdownFiles.length > 0) {
+            menu.addItem((item) =>
+              item
+                .setTitle(`Generate titles for ${markdownFiles.length} notes`)
+                .setIcon('lucide-edit-3')
+                .onClick(() =>
+                  this.generateTitlesForMultipleFiles(markdownFiles)
+                )
+            );
+          }
+        })
+      );
 
       this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
       this.logger.info('Plugin loaded successfully');
     } catch (error) {
-      this.errorHandler.handleError(error as Error, { context: 'plugin-onload' });
+      this.errorHandler.handleError(error as Error, {
+        context: 'plugin-onload',
+      });
     }
   }
 
@@ -122,7 +142,8 @@ export default class TitleGeneratorPlugin extends Plugin {
 
     // Migration for a typo in a previous version
     if (loadedData.openaiModel && !loadedData.openAiModel) {
-          if ((loadedData as any).debugMode) console.log('Migrating old setting `openaiModel` to `openAiModel`');
+      if ((loadedData as any).debugMode)
+        console.log('Migrating old setting `openaiModel` to `openAiModel`');
       loadedData.openAiModel = loadedData.openaiModel;
       delete loadedData.openaiModel;
     }
@@ -138,16 +159,17 @@ export default class TitleGeneratorPlugin extends Plugin {
     try {
       const activeFile = this.app.workspace.getActiveFile();
       if (!activeFile) {
-        this.errorHandler.handleError(
-          new Error('No active file found'),
-          { context: 'generate-title-editor' }
-        );
+        this.errorHandler.handleError(new Error('No active file found'), {
+          context: 'generate-title-editor',
+        });
         return;
       }
       const content = editor.getValue();
       await this.processSingleFile(activeFile, content);
     } catch (error) {
-      this.errorHandler.handleError(error as Error, { context: 'generate-title-editor' });
+      this.errorHandler.handleError(error as Error, {
+        context: 'generate-title-editor',
+      });
     }
   }
 
@@ -156,7 +178,10 @@ export default class TitleGeneratorPlugin extends Plugin {
       const content = await this.app.vault.cachedRead(file);
       await this.processSingleFile(file, content);
     } catch (error) {
-      this.errorHandler.handleError(error as Error, { context: 'generate-title-file', file: file.path });
+      this.errorHandler.handleError(error as Error, {
+        context: 'generate-title-file',
+        file: file.path,
+      });
     }
   }
 
@@ -198,18 +223,30 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
 
     if (errors.length > 0) {
-      this.errorHandler.handleMultipleErrors(errors, { context: 'batch-generation' });
+      this.errorHandler.handleMultipleErrors(errors, {
+        context: 'batch-generation',
+      });
     }
 
-    statusBarItem.setText(`Title generation complete: ${progress.succeeded} succeeded, ${progress.failed} failed`);
-    setTimeout(() => statusBarItem.remove(), UI_CONFIG.NOTIFICATION_DURATION.MEDIUM);
-    
+    statusBarItem.setText(
+      `Title generation complete: ${progress.succeeded} succeeded, ${progress.failed} failed`
+    );
+    setTimeout(
+      () => statusBarItem.remove(),
+      UI_CONFIG.NOTIFICATION_DURATION.MEDIUM
+    );
+
     this.logger.info(`Batch title generation completed`, progress);
   }
 
-  private async processSingleFile(file: TFile, content: string): Promise<FileOperationResult> {
+  private async processSingleFile(
+    file: TFile,
+    content: string
+  ): Promise<FileOperationResult> {
     if (!content.trim()) {
-      const error = this.errorHandler.createGenerationError('Note is empty. Cannot generate title.');
+      const error = this.errorHandler.createGenerationError(
+        'Note is empty. Cannot generate title.'
+      );
       this.errorHandler.handleError(error);
       return { success: false, originalPath: file.path, error: error.message };
     }
@@ -220,76 +257,110 @@ export default class TitleGeneratorPlugin extends Plugin {
     try {
       // Validate content before processing
       const sanitizedContent = this.validationService.sanitizeInput(content);
-      
+
       this.logger.debug(`Generating title for file: ${file.path}`);
       const newTitle = await this.aiService.generateTitle(sanitizedContent);
 
       if (newTitle) {
         // Sanitize the generated title
-        const sanitizedTitle = this.validationService.sanitizeFilename(newTitle);
-        
+        const sanitizedTitle =
+          this.validationService.sanitizeFilename(newTitle);
+
         // Check for duplicate titles in content if enabled
         let finalContent = content;
         if (this.settings.enableDuplicateRemoval) {
-          const duplicateResult = await this.handleDuplicateTitles(file, sanitizedTitle, content);
+          const duplicateResult = await this.handleDuplicateTitles(
+            file,
+            sanitizedTitle,
+            content
+          );
           if (duplicateResult.contentModified) {
             finalContent = duplicateResult.modifiedContent;
           }
         }
-        
+
         const { dir, ext } = path.parse(file.path);
         let candidatePath = normalizePath(`${dir}/${sanitizedTitle}${ext}`);
         let counter = 1;
-        
+
         while (this.app.vault.getAbstractFileByPath(candidatePath)) {
-          candidatePath = normalizePath(`${dir}/${sanitizedTitle} (${counter})${ext}`);
+          candidatePath = normalizePath(
+            `${dir}/${sanitizedTitle} (${counter})${ext}`
+          );
           counter++;
         }
 
         if (candidatePath !== file.path) {
           await this.app.fileManager.renameFile(file, candidatePath);
-          
+
           // Update content if it was modified
           if (finalContent !== content) {
-            await this.app.vault.modify(this.app.vault.getAbstractFileByPath(candidatePath) as TFile, finalContent);
+            await this.app.vault.modify(
+              this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
+              finalContent
+            );
           }
-          
+
           new Notice(`Title generated: "${sanitizedTitle}"`);
           this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
-          return { success: true, originalPath: file.path, newPath: candidatePath };
+          return {
+            success: true,
+            originalPath: file.path,
+            newPath: candidatePath,
+          };
         } else {
           // Update content even if filename didn't change
           if (finalContent !== content) {
             await this.app.vault.modify(file, finalContent);
           }
-          
+
           new Notice(`Generated title is the same as the current one.`);
-          this.logger.debug(`No rename needed for ${file.path}: title unchanged`);
+          this.logger.debug(
+            `No rename needed for ${file.path}: title unchanged`
+          );
           return { success: true, originalPath: file.path, newPath: file.path };
         }
       } else {
-        const error = this.errorHandler.createGenerationError('Title generation returned empty result');
+        const error = this.errorHandler.createGenerationError(
+          'Title generation returned empty result'
+        );
         this.errorHandler.handleError(error);
-        return { success: false, originalPath: file.path, error: error.message };
+        return {
+          success: false,
+          originalPath: file.path,
+          error: error.message,
+        };
       }
     } catch (error) {
-      this.errorHandler.handleError(error as Error, { context: 'process-single-file', file: file.path });
-      return { success: false, originalPath: file.path, error: (error as Error).message };
+      this.errorHandler.handleError(error as Error, {
+        context: 'process-single-file',
+        file: file.path,
+      });
+      return {
+        success: false,
+        originalPath: file.path,
+        error: (error as Error).message,
+      };
     } finally {
       statusBarItem.remove();
     }
   }
 
   private async handleDuplicateTitles(
-    file: TFile, 
-    generatedTitle: string, 
+    file: TFile,
+    generatedTitle: string,
     content: string
   ): Promise<{ contentModified: boolean; modifiedContent: string }> {
     try {
       // Use AI-based detection for title duplicates
-      const aiDetectionResult = await this.detectDuplicateWithAI(generatedTitle, content);
+      const aiDetectionResult = await this.detectDuplicateWithAI(
+        generatedTitle,
+        content
+      );
       if (aiDetectionResult.contentModified) {
-        this.logger.info(`AI detected and removed duplicate title content from ${file.path}`);
+        this.logger.info(
+          `AI detected and removed duplicate title content from ${file.path}`
+        );
         new Notice('Removed duplicate title from note content (AI detection)');
         return aiDetectionResult;
       }
@@ -298,28 +369,40 @@ export default class TitleGeneratorPlugin extends Plugin {
       this.logger.debug(`No duplicate title content found in ${file.path}`);
       return { contentModified: false, modifiedContent: content };
     } catch (error) {
-      this.errorHandler.handleError(error as Error, { context: 'handle-duplicate-titles', file: file.path });
+      this.errorHandler.handleError(error as Error, {
+        context: 'handle-duplicate-titles',
+        file: file.path,
+      });
       return { contentModified: false, modifiedContent: content };
     }
   }
 
   private async detectDuplicateWithAI(
-    title: string, 
+    title: string,
     content: string
   ): Promise<{ contentModified: boolean; modifiedContent: string }> {
     try {
       // Create a bound function for AI calls
-      const aiCallFunction = async (prompt: string, content: string): Promise<string> => {
+      const aiCallFunction = async (
+        prompt: string,
+        content: string
+      ): Promise<string> => {
         return await this.aiService.makeAICall(prompt, content);
       };
 
       // Use the AI-based duplicate detection
-      const result = await detectAndRemoveDuplicateWithAI(title, content, aiCallFunction);
+      const result = await detectAndRemoveDuplicateWithAI(
+        title,
+        content,
+        aiCallFunction
+      );
       return result;
     } catch (error) {
-      this.logger.debug('AI duplicate detection failed, falling back to traditional method:', error);
+      this.logger.debug(
+        'AI duplicate detection failed, falling back to traditional method:',
+        error
+      );
       return { contentModified: false, modifiedContent: content };
     }
   }
-
 }

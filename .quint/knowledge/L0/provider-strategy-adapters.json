@@ -1,0 +1,14 @@
+{
+  "title": "Provider-Specific Strategy Adapters",
+  "content": "Refactor AIService using the Strategy Pattern. Introduce specialized adapters for each provider (OpenAIAdapter, AnthropicAdapter, GeminiAdapter). Each adapter handles its own reasoning logic, parameter translation (e.g., mapping settings.temperature to reasoning_effort), and 'thinking' block removal from responses. This isolates provider-specific quirks and simplifies future provider additions.",
+  "scope": "src/aiService.ts",
+  "kind": "system",
+  "decision_context": "next-gen-reasoning-support",
+  "rationale": {
+    "anomaly": "AIService is becoming a large conditional switch with deeply nested, incompatible API shapes.",
+    "approach": "Use polymorphism to handle the different 'dialects' of Reasoning/Thinking APIs.",
+    "alternatives_rejected": [
+      "Unified API wrapper (abstracts away provider-specific features we want to expose)"
+    ]
+  }
+}

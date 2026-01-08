@@ -1,0 +1,7 @@
+{
+  "hypothesis_id": "provider-strategy-adapters",
+  "R_eff": 0.85,
+  "weakest_link": "internal prototype (CL3)",
+  "risks": "WLNK: 0.85. Reliability is slightly lower than the registry because refactoring AIService into strategies carries a higher implementation risk of breaking legacy provider support if not carefully regression-tested. Bias check: Medium (architectural preference for Strategy Pattern).",
+  "bias_check": "Medium"
+}

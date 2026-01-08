@@ -1,0 +1,12 @@
+{
+  "title": "Fix Model Filtering and Implement Reasoning Parameter Mapping",
+  "content": "1. Update ModelService.queryOpenAIModels to include 'o1' and 'o3' models (not just 'gpt').\n2. In AIService, detect reasoning models using broader patterns: OpenAI (o1, o3, gpt-5), Anthropic (claude-3-7), Google (gemini-2.0-flash-thinking, gemini-3).\n3. Use 'max_completion_tokens' for OpenAI reasoning models and ensure temperature is omitted.\n4. Ensure Anthropic 'max_tokens' is significantly higher than 'budget_tokens' and temperature is 1.0 when thinking is enabled.\n5. Map Gemini 'thinkingConfig' correctly for 2.0 Thinking models.",
+  "scope": "src/modelService.ts, src/aiService.ts",
+  "kind": "system",
+  "decision_context": "ai-provider-access-strategy",
+  "rationale": {
+    "anomaly": "Current implementation excludes o1/o3 models and lacks the required 'max_completion_tokens' parameter for OpenAI reasoning.",
+    "approach": "Direct heuristic fixes and parameter mapping extensions.",
+    "alternatives_rejected": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "title": "Dynamic JSON-Driven Request Templating",
+  "content": "Store API request shapes as JSON templates with placeholders (e.g., {{max_tokens}}, {{thinking_config}}). When a model is selected, the plugin loads the corresponding template. This allows for 'live' updates to model support without re-compiling the plugin, essentially making the API access layer 'data-driven' rather than 'code-driven'.",
+  "scope": "src/aiService.ts",
+  "kind": "system",
+  "decision_context": "next-gen-reasoning-support",
+  "checks_json": {
+    "type_check": "REFINE: Typing dynamic templates is complex and may lead to 'any' usage.",
+    "constraint_check": "PASS: Technically possible but might be over-engineered for a plugin.",
+    "logic_check": "PASS: Highest flexibility, but highest implementation cost."
+  },
+  "verdict": "REFINE"
+}

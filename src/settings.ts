@@ -271,7 +271,10 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             .addOption('loose', 'Loose (75% similarity)')
             .setValue(this.plugin.settings.duplicateDetectionSensitivity)
             .onChange(async (value) => {
-              this.plugin.settings.duplicateDetectionSensitivity = value as 'strict' | 'normal' | 'loose';
+              this.plugin.settings.duplicateDetectionSensitivity = value as
+                | 'strict'
+                | 'normal'
+                | 'loose';
               await this.plugin.saveSettings();
             });
         });
@@ -329,7 +332,10 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // API Key input
     if (providerInfo.requiresApiKey) {
-      const keyName = provider === 'openai' ? 'openAiApiKey' : `${provider}ApiKey` as keyof TitleGeneratorSettings;
+      const keyName =
+        provider === 'openai'
+          ? 'openAiApiKey'
+          : (`${provider}ApiKey` as keyof TitleGeneratorSettings);
       let initialValue = this.plugin.settings[keyName] as string;
       let currentValue = initialValue;
       let textEl: any, cancelBtn: any, okBtn: any;
@@ -338,7 +344,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         .setDesc(`Your ${providerInfo.name} API key.`);
       apiKeySetting.addText((text) => {
         textEl = text;
-        text.setPlaceholder('Enter API key')
+        text
+          .setPlaceholder('Enter API key')
           .setValue(initialValue)
           .onChange((value) => {
             currentValue = value;
@@ -349,7 +356,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
       apiKeySetting.addButton((btn) => {
         cancelBtn = btn;
-        btn.setButtonText('Cancel')
+        btn
+          .setButtonText('Cancel')
           .setDisabled(true)
           .onClick(() => {
             textEl.setValue(initialValue);
@@ -360,7 +368,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
       apiKeySetting.addButton((btn) => {
         okBtn = btn;
-        btn.setButtonText('OK')
+        btn
+          .setButtonText('OK')
           .setDisabled(true)
           .onClick(async () => {
             (this.plugin.settings as any)[keyName] = currentValue;
@@ -663,6 +672,4 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return false;
     }
   }
-
-  
 }

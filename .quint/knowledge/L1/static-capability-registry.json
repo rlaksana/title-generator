@@ -1,0 +1,13 @@
+{
+  "title": "Static Model Capability Registry",
+  "content": "Implement a centralized registry (e.g., in constants.ts or a new metadata file) that maps model ID patterns to specific capabilities: 'REASONING', 'THINKING_BUDGET', 'REASONING_EFFORT'. The ModelService enriches fetched models with these flags, and the AIService uses a generic 'buildRequest' method that constructs the body based on these flags rather than checking model names directly.",
+  "scope": "src/modelService.ts, src/aiService.ts, src/types.ts",
+  "kind": "system",
+  "decision_context": "next-gen-reasoning-support",
+  "checks_json": {
+    "type_check": "PASS: Adding ModelCapability to types.ts is straightforward.",
+    "constraint_check": "PASS: Maintains mobile-first requestUrl usage.",
+    "logic_check": "PASS: Effectively eliminates brittle string matching in AIService."
+  },
+  "verdict": "PASS"
+}

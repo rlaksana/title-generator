@@ -54,43 +54,62 @@ export async function detectAndRemoveDuplicateWithAI(
   try {
     // Extract first paragraph or few lines from content
     const lines = content.split('\n');
-    const firstNonEmptyLines = lines.filter(line => line.trim()).slice(0, 3);
+    const firstNonEmptyLines = lines.filter((line) => line.trim()).slice(0, 3);
     const firstParagraph = firstNonEmptyLines.join('\n').trim();
-    
+
     if (!firstParagraph || firstParagraph.length < 10) {
       return { contentModified: false, modifiedContent: content };
     }
-    
+
     // Categorize formatting types
-    const formattingAnalysis = firstNonEmptyLines.map(line => {
+    const formattingAnalysis = firstNonEmptyLines.map((line) => {
       const trimmed = line.trim();
       return {
         original: line,
         isHeader: trimmed.startsWith('#'),
         isList: trimmed.startsWith('-') || trimmed.startsWith('*'),
         isCodeBlock: trimmed.startsWith('```'),
-        hasEmoji: /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(trimmed),
-        hasMarkdown: trimmed.includes('**') || trimmed.includes('`') || trimmed.includes('['),
-        isStructural: trimmed.startsWith('#') || trimmed.includes('|') || trimmed.startsWith('```'),
-        contentWithoutFormatting: trimmed.replace(/^[#\-\*\s]+/, '').replace(/[\*\`\[\]]/g, '').replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim()
+        hasEmoji:
+          /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(
+            trimmed
+          ),
+        hasMarkdown:
+          trimmed.includes('**') ||
+          trimmed.includes('`') ||
+          trimmed.includes('['),
+        isStructural:
+          trimmed.startsWith('#') ||
+          trimmed.includes('|') ||
+          trimmed.startsWith('```'),
+        contentWithoutFormatting: trimmed
+          .replace(/^[#\-\*\s]+/, '')
+          .replace(/[\*\`\[\]]/g, '')
+          .replace(
+            /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu,
+            ''
+          )
+          .trim(),
       };
     });
-    
+
     // Check if this is structural content that should be preserved
-    const isStructuralContent = formattingAnalysis.some(analysis => 
-      analysis.isStructural || analysis.isCodeBlock
+    const isStructuralContent = formattingAnalysis.some(
+      (analysis) => analysis.isStructural || analysis.isCodeBlock
     );
-    
+
     // For list items, check if they're actually content lists vs duplicate text
-    const isContentList = formattingAnalysis.some(analysis => 
-      analysis.isList && analysis.contentWithoutFormatting.length > 20
+    const isContentList = formattingAnalysis.some(
+      (analysis) =>
+        analysis.isList && analysis.contentWithoutFormatting.length > 20
     );
-    
+
     if (isStructuralContent || isContentList) {
-      console.log('Detected structural/content formatting, skipping duplicate cleanup to preserve structure');
+      console.log(
+        'Detected structural/content formatting, skipping duplicate cleanup to preserve structure'
+      );
       return { contentModified: false, modifiedContent: content };
     }
-    
+
     // Enhanced prompt for formatted duplicate detection
     const prompt = `Analyze if the first paragraph is a genuine duplicate of the title, considering both content and formatting.
 
@@ -122,56 +141,72 @@ Response:`;
 
     const aiResponse = await aiCallFunction(prompt, '');
     const response = aiResponse.trim().toUpperCase();
-    
+
     if (response === 'DUPLICATE') {
       // For formatted duplicates, be more careful about what we remove
       const duplicateLineIndices: number[] = [];
-      
+
       // Only remove lines that are truly duplicate (not structural)
-      for (let i = 0; i < lines.length && duplicateLineIndices.length < firstNonEmptyLines.length; i++) {
+      for (
+        let i = 0;
+        i < lines.length &&
+        duplicateLineIndices.length < firstNonEmptyLines.length;
+        i++
+      ) {
         const line = lines[i].trim();
         if (line) {
           // Check if this line's core content (without formatting) is duplicate
-          const coreContent = line.replace(/^[#\-\*\s]+/, '').replace(/[\*\`\[\]]/g, '').replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
-          
+          const coreContent = line
+            .replace(/^[#\-\*\s]+/, '')
+            .replace(/[\*\`\[\]]/g, '')
+            .replace(
+              /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu,
+              ''
+            )
+            .trim();
+
           // Only mark as duplicate if:
           // 1. Core content is substantial enough to compare
           // 2. It's not a complex list item or structural element
-          if (coreContent.length > 5 && 
-              !line.includes('|') && 
-              !line.startsWith('```') &&
-              !(line.includes('-') && coreContent.length > 20)) {
+          if (
+            coreContent.length > 5 &&
+            !line.includes('|') &&
+            !line.startsWith('```') &&
+            !(line.includes('-') && coreContent.length > 20)
+          ) {
             duplicateLineIndices.push(i);
           }
         }
       }
-      
+
       if (duplicateLineIndices.length === 0) {
         return { contentModified: false, modifiedContent: content };
       }
-      
+
       // Create new lines array without the duplicate content
       const modifiedLines = [...lines];
-      
+
       // Remove lines in reverse order to maintain correct indices
       for (let i = duplicateLineIndices.length - 1; i >= 0; i--) {
         const lineIndex = duplicateLineIndices[i];
         modifiedLines.splice(lineIndex, 1);
       }
-      
+
       // Join and clean up excessive empty lines at the beginning
       let modifiedContent = modifiedLines.join('\n');
       modifiedContent = modifiedContent.replace(/^\n+/, '');
-      
+
       // Ensure there's at least some content left
       if (modifiedContent.trim().length === 0) {
-        console.warn('Duplicate removal would result in empty content, keeping original');
+        console.warn(
+          'Duplicate removal would result in empty content, keeping original'
+        );
         return { contentModified: false, modifiedContent: content };
       }
-      
+
       return { contentModified: true, modifiedContent };
     }
-    
+
     return { contentModified: false, modifiedContent: content };
   } catch (error) {
     console.error('Error in AI duplicate detection:', error);
