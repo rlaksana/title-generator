@@ -1,0 +1,12 @@
+{
+  "title": "Enriched Model Metadata & Capability Flags",
+  "content": "Define a 'ModelCapability' interface that includes flags: 'isReasoning', 'supportsTemperature', 'requiresMaxCompletionTokens', 'supportsExtendedThinking'. The ModelService should lookup these capabilities from a local static map when a model is selected. AIService then uses these flags to construct the request body, making it resilient to new model name variations.",
+  "scope": "src/types.ts, src/modelService.ts, src/aiService.ts",
+  "kind": "system",
+  "decision_context": "ai-provider-access-strategy",
+  "rationale": {
+    "anomaly": "String-based detection in AIService is becoming complex and fragile.",
+    "approach": "Centralize model capability knowledge into a metadata layer.",
+    "alternatives_rejected": []
+  }
+}

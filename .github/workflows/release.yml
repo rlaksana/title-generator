@@ -34,10 +34,10 @@ jobs:
         run: |
           # Always increment from latest release for every commit/push
           echo "🚀 Auto-incrementing version for every commit/push..."
-          
+
           # Get latest release version
           LATEST_RELEASE=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null | sed 's/^v//' || echo "")
-          
+
           if [ -z "$LATEST_RELEASE" ]; then
             # No releases yet, start from manifest.json
             LATEST_RELEASE=$(jq -r .version manifest.json)
@@ -45,12 +45,12 @@ jobs:
           else
             echo "Latest release found: $LATEST_RELEASE"
           fi
-          
+
           # Always increment patch version
           IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_RELEASE"
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-          
+
           echo "Auto-incrementing: $LATEST_RELEASE → $NEW_VERSION"
           echo "CURRENT_VERSION=$LATEST_RELEASE" >> $GITHUB_ENV
           echo "RELEASE_VERSION=$NEW_VERSION" >> $GITHUB_ENV
@@ -145,7 +145,7 @@ jobs:
           echo "Verifying asset accessibility..."
           MAIN_JS_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/main.js"
           MANIFEST_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/manifest.json"
-          
+
           for i in {1..10}; do
             echo "Verification attempt $i/10..."
             if curl -f -s -L "$MAIN_JS_URL" > /dev/null && curl -f -s -L "$MANIFEST_URL" > /dev/null; then
@@ -165,18 +165,18 @@ jobs:
         run: |
           # Create a secondary release with slightly different name to ensure CDN propagation
           MIRROR_TAG="v$RELEASE_VERSION-mirror"
-          
+
           echo "Creating mirror release $MIRROR_TAG for CDN reliability..."
           sleep 60  # Wait 1 minute for initial CDN propagation
-          
+
           # Create mirror release
           gh release create "$MIRROR_TAG" \
             --title "Mirror Release $MIRROR_TAG" \
             --notes "Mirror release for CDN reliability. Use main release v$RELEASE_VERSION for BRAT." \
             dist/main.js dist/manifest.json
-          
+
           echo "Mirror release created for CDN reliability"
-          
+
           # Clean up mirror release after 5 minutes (for CDN propagation)
           echo "Scheduling mirror release cleanup..."
           sleep 300
@@ -188,11 +188,11 @@ jobs:
         run: |
           TAG="v$RELEASE_VERSION"
           echo "Running post-release verification..."
-          
+
           # Multiple verification attempts with different methods
           MAIN_JS_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/main.js"
           MANIFEST_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/manifest.json"
-          
+
           echo "Direct URL verification:"
           for i in {1..5}; do
             echo "Verification round $i/5..."
@@ -220,6 +220,6 @@ jobs:
               sleep 60
             fi
           done
-          
+
           echo "✅ Release verification completed"
           echo "📋 BRAT Installation: Use repository URL 'rlaksana/title-generator'"

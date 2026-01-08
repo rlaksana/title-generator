@@ -1,0 +1,7 @@
+{
+  "hypothesis_id": "static-capability-registry",
+  "R_eff": 0.9,
+  "weakest_link": "internal prototype (CL3)",
+  "risks": "WLNK: 0.9. The evidence is strong because it was validated with an internal prototype (CL3) that directly matches the Obsidian environment's constraints. Risk is low as the registry is static and predictable. Bias check: Low, although a 'Capability Registry' is a standard pattern, its implementation here is specifically tailored to the provider quirks identified in research.",
+  "bias_check": "Low"
+}

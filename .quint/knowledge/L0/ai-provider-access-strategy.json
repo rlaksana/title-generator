@@ -1,0 +1,11 @@
+{
+  "title": "AI Provider API Access and Model Loading Strategy",
+  "content": "Define how the plugin should handle diverse API access patterns and model capabilities (standard vs. reasoning/thinking) across different AI providers.",
+  "scope": "src/aiService.ts, src/modelService.ts, src/settings.ts",
+  "kind": "episteme",
+  "rationale": {
+    "anomaly": "Specialized models (reasoning/thinking) require different API parameters (temperature, max_tokens, thinking blocks) which vary per provider and evolve rapidly.",
+    "approach": "Evaluate different abstraction levels for managing provider-specific quirks and model capabilities.",
+    "alternatives_rejected": []
+  }
+}

@@ -109,7 +109,13 @@ export class ModelService {
     }
 
     return data.data
-      .filter((model: any) => model.id && model.id.includes('gpt'))
+      .filter(
+        (model: any) =>
+          model.id &&
+          (model.id.includes('gpt') ||
+            model.id.startsWith('o1') ||
+            model.id.startsWith('o3'))
+      )
       .map((model: any) => model.id)
       .sort();
   }
@@ -142,9 +148,7 @@ export class ModelService {
       throw new Error('Invalid response format from Anthropic API');
     }
 
-    return data.data
-      .map((model: any) => model.id)
-      .sort();
+    return data.data.map((model: any) => model.id).sort();
   }
 
   private async queryGoogleModels(
@@ -178,9 +182,6 @@ export class ModelService {
       .map((model: any) => model.name.replace('models/', ''))
       .sort();
   }
-
-  
-
 
   private async cacheModels(
     provider: AIProvider,

@@ -55,7 +55,11 @@ export class Logger {
   /**
    * Log with custom level
    */
-  log(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR', message: string, ...args: any[]): void {
+  log(
+    level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR',
+    message: string,
+    ...args: any[]
+  ): void {
     switch (level) {
       case 'DEBUG':
         this.debug(message, ...args);
@@ -100,7 +104,7 @@ export class Logger {
   logSettingsChange(setting: string, oldValue: any, newValue: any): void {
     const safeOldValue = this.maskSensitiveData(setting, oldValue);
     const safeNewValue = this.maskSensitiveData(setting, newValue);
-    
+
     this.debug(`Settings changed: ${setting}`, {
       setting,
       oldValue: safeOldValue,
@@ -119,7 +123,10 @@ export class Logger {
    * Mask sensitive data based on setting name
    */
   private maskSensitiveData(setting: string, value: any): any {
-    if (setting.toLowerCase().includes('apikey') || setting.toLowerCase().includes('key')) {
+    if (
+      setting.toLowerCase().includes('apikey') ||
+      setting.toLowerCase().includes('key')
+    ) {
       return value ? '***' : '';
     }
     return value;

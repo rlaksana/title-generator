@@ -18,7 +18,10 @@ export class ValidationService {
   /**
    * Validate API key format and length
    */
-  public validateApiKey(apiKey: string, provider: AIProvider): ValidationResult {
+  public validateApiKey(
+    apiKey: string,
+    provider: AIProvider
+  ): ValidationResult {
     const result: ValidationResult = {
       valid: true,
       errors: [],
@@ -32,7 +35,7 @@ export class ValidationService {
     }
 
     const trimmedKey = apiKey.trim();
-    
+
     if (trimmedKey.length === 0) {
       result.valid = false;
       result.errors.push('API key cannot be empty');
@@ -41,12 +44,16 @@ export class ValidationService {
 
     if (trimmedKey.length < VALIDATION_RULES.API_KEY.MIN_LENGTH) {
       result.valid = false;
-      result.errors.push(`API key must be at least ${VALIDATION_RULES.API_KEY.MIN_LENGTH} characters long`);
+      result.errors.push(
+        `API key must be at least ${VALIDATION_RULES.API_KEY.MIN_LENGTH} characters long`
+      );
     }
 
     if (trimmedKey.length > VALIDATION_RULES.API_KEY.MAX_LENGTH) {
       result.valid = false;
-      result.errors.push(`API key must be no more than ${VALIDATION_RULES.API_KEY.MAX_LENGTH} characters long`);
+      result.errors.push(
+        `API key must be no more than ${VALIDATION_RULES.API_KEY.MAX_LENGTH} characters long`
+      );
     }
 
     // Provider-specific validation
@@ -58,12 +65,16 @@ export class ValidationService {
         break;
       case 'anthropic':
         if (!trimmedKey.startsWith('sk-ant-')) {
-          result.warnings.push('Anthropic API keys typically start with "sk-ant-"');
+          result.warnings.push(
+            'Anthropic API keys typically start with "sk-ant-"'
+          );
         }
         break;
       case 'google':
         if (trimmedKey.length < 20) {
-          result.warnings.push('Google API keys are typically longer than 20 characters');
+          result.warnings.push(
+            'Google API keys are typically longer than 20 characters'
+          );
         }
         break;
     }
@@ -74,7 +85,10 @@ export class ValidationService {
   /**
    * Validate model name
    */
-  public validateModelName(modelName: string, provider: AIProvider): ValidationResult {
+  public validateModelName(
+    modelName: string,
+    provider: AIProvider
+  ): ValidationResult {
     const result: ValidationResult = {
       valid: true,
       errors: [],
@@ -88,7 +102,7 @@ export class ValidationService {
     }
 
     const trimmedName = modelName.trim();
-    
+
     if (trimmedName.length === 0) {
       result.valid = false;
       result.errors.push('Model name cannot be empty');
@@ -97,29 +111,39 @@ export class ValidationService {
 
     if (trimmedName.length < VALIDATION_RULES.MODEL_NAME.MIN_LENGTH) {
       result.valid = false;
-      result.errors.push(`Model name must be at least ${VALIDATION_RULES.MODEL_NAME.MIN_LENGTH} character long`);
+      result.errors.push(
+        `Model name must be at least ${VALIDATION_RULES.MODEL_NAME.MIN_LENGTH} character long`
+      );
     }
 
     if (trimmedName.length > VALIDATION_RULES.MODEL_NAME.MAX_LENGTH) {
       result.valid = false;
-      result.errors.push(`Model name must be no more than ${VALIDATION_RULES.MODEL_NAME.MAX_LENGTH} characters long`);
+      result.errors.push(
+        `Model name must be no more than ${VALIDATION_RULES.MODEL_NAME.MAX_LENGTH} characters long`
+      );
     }
 
     // Provider-specific validation
     switch (provider) {
       case 'openai':
         if (!trimmedName.includes('gpt')) {
-          result.warnings.push('OpenAI models typically contain "gpt" in the name');
+          result.warnings.push(
+            'OpenAI models typically contain "gpt" in the name'
+          );
         }
         break;
       case 'anthropic':
         if (!trimmedName.includes('claude')) {
-          result.warnings.push('Anthropic models typically contain "claude" in the name');
+          result.warnings.push(
+            'Anthropic models typically contain "claude" in the name'
+          );
         }
         break;
       case 'google':
         if (!trimmedName.includes('gemini')) {
-          result.warnings.push('Google models typically contain "gemini" in the name');
+          result.warnings.push(
+            'Google models typically contain "gemini" in the name'
+          );
         }
         break;
     }
@@ -130,7 +154,10 @@ export class ValidationService {
   /**
    * Validate prompt template
    */
-  public validatePrompt(prompt: string, isRefinementPrompt = false): ValidationResult {
+  public validatePrompt(
+    prompt: string,
+    isRefinementPrompt = false
+  ): ValidationResult {
     const result: ValidationResult = {
       valid: true,
       errors: [],
@@ -144,38 +171,51 @@ export class ValidationService {
     }
 
     const trimmedPrompt = prompt.trim();
-    
+
     if (trimmedPrompt.length === 0) {
       result.valid = false;
       result.errors.push('Prompt cannot be empty');
       return result;
     }
 
-    const rules = isRefinementPrompt ? VALIDATION_RULES.REFINE_PROMPT : VALIDATION_RULES.PROMPT;
-    
+    const rules = isRefinementPrompt
+      ? VALIDATION_RULES.REFINE_PROMPT
+      : VALIDATION_RULES.PROMPT;
+
     if (trimmedPrompt.length < rules.MIN_LENGTH) {
       result.valid = false;
-      result.errors.push(`Prompt must be at least ${rules.MIN_LENGTH} characters long`);
+      result.errors.push(
+        `Prompt must be at least ${rules.MIN_LENGTH} characters long`
+      );
     }
 
     if (trimmedPrompt.length > rules.MAX_LENGTH) {
       result.valid = false;
-      result.errors.push(`Prompt must be no more than ${rules.MAX_LENGTH} characters long`);
+      result.errors.push(
+        `Prompt must be no more than ${rules.MAX_LENGTH} characters long`
+      );
     }
 
     // Check for required placeholders
     if (isRefinementPrompt) {
-      const requiredPlaceholders = VALIDATION_RULES.REFINE_PROMPT.REQUIRED_PLACEHOLDERS;
+      const requiredPlaceholders =
+        VALIDATION_RULES.REFINE_PROMPT.REQUIRED_PLACEHOLDERS;
       for (const placeholder of requiredPlaceholders) {
         if (!trimmedPrompt.includes(placeholder)) {
           result.valid = false;
-          result.errors.push(`Refinement prompt must contain placeholder: ${placeholder}`);
+          result.errors.push(
+            `Refinement prompt must contain placeholder: ${placeholder}`
+          );
         }
       }
     } else {
-      if (!trimmedPrompt.includes(VALIDATION_RULES.PROMPT.REQUIRED_PLACEHOLDER)) {
+      if (
+        !trimmedPrompt.includes(VALIDATION_RULES.PROMPT.REQUIRED_PLACEHOLDER)
+      ) {
         result.valid = false;
-        result.errors.push(`Prompt must contain placeholder: ${VALIDATION_RULES.PROMPT.REQUIRED_PLACEHOLDER}`);
+        result.errors.push(
+          `Prompt must contain placeholder: ${VALIDATION_RULES.PROMPT.REQUIRED_PLACEHOLDER}`
+        );
       }
     }
 
@@ -200,19 +240,27 @@ export class ValidationService {
 
     if (temperature < MODEL_CONFIG.MIN_TEMPERATURE) {
       result.valid = false;
-      result.errors.push(`Temperature must be at least ${MODEL_CONFIG.MIN_TEMPERATURE}`);
+      result.errors.push(
+        `Temperature must be at least ${MODEL_CONFIG.MIN_TEMPERATURE}`
+      );
     }
 
     if (temperature > MODEL_CONFIG.MAX_TEMPERATURE) {
       result.valid = false;
-      result.errors.push(`Temperature must be no more than ${MODEL_CONFIG.MAX_TEMPERATURE}`);
+      result.errors.push(
+        `Temperature must be no more than ${MODEL_CONFIG.MAX_TEMPERATURE}`
+      );
     }
 
     // Warnings for extreme values
     if (temperature === 0) {
-      result.warnings.push('Temperature of 0 will produce very predictable results');
+      result.warnings.push(
+        'Temperature of 0 will produce very predictable results'
+      );
     } else if (temperature >= 0.9) {
-      result.warnings.push('High temperature values may produce inconsistent results');
+      result.warnings.push(
+        'High temperature values may produce inconsistent results'
+      );
     }
 
     return result;
@@ -228,7 +276,11 @@ export class ValidationService {
       warnings: [],
     };
 
-    if (typeof length !== 'number' || isNaN(length) || !Number.isInteger(length)) {
+    if (
+      typeof length !== 'number' ||
+      isNaN(length) ||
+      !Number.isInteger(length)
+    ) {
       result.valid = false;
       result.errors.push('Max title length must be a whole number');
       return result;
@@ -236,19 +288,25 @@ export class ValidationService {
 
     if (length < TITLE_CONFIG.MIN_MAX_LENGTH) {
       result.valid = false;
-      result.errors.push(`Max title length must be at least ${TITLE_CONFIG.MIN_MAX_LENGTH}`);
+      result.errors.push(
+        `Max title length must be at least ${TITLE_CONFIG.MIN_MAX_LENGTH}`
+      );
     }
 
     if (length > TITLE_CONFIG.MAX_MAX_LENGTH) {
       result.valid = false;
-      result.errors.push(`Max title length must be no more than ${TITLE_CONFIG.MAX_MAX_LENGTH}`);
+      result.errors.push(
+        `Max title length must be no more than ${TITLE_CONFIG.MAX_MAX_LENGTH}`
+      );
     }
 
     // Warnings for extreme values
     if (length < 30) {
       result.warnings.push('Short titles may not be descriptive enough');
     } else if (length > 100) {
-      result.warnings.push('Long titles may not be suitable for all file systems');
+      result.warnings.push(
+        'Long titles may not be suitable for all file systems'
+      );
     }
 
     return result;
@@ -264,7 +322,11 @@ export class ValidationService {
       warnings: [],
     };
 
-    if (typeof length !== 'number' || isNaN(length) || !Number.isInteger(length)) {
+    if (
+      typeof length !== 'number' ||
+      isNaN(length) ||
+      !Number.isInteger(length)
+    ) {
       result.valid = false;
       result.errors.push('Max content length must be a whole number');
       return result;
@@ -272,19 +334,27 @@ export class ValidationService {
 
     if (length < TITLE_CONFIG.MIN_MAX_CONTENT_LENGTH) {
       result.valid = false;
-      result.errors.push(`Max content length must be at least ${TITLE_CONFIG.MIN_MAX_CONTENT_LENGTH}`);
+      result.errors.push(
+        `Max content length must be at least ${TITLE_CONFIG.MIN_MAX_CONTENT_LENGTH}`
+      );
     }
 
     if (length > TITLE_CONFIG.MAX_MAX_CONTENT_LENGTH) {
       result.valid = false;
-      result.errors.push(`Max content length must be no more than ${TITLE_CONFIG.MAX_MAX_CONTENT_LENGTH}`);
+      result.errors.push(
+        `Max content length must be no more than ${TITLE_CONFIG.MAX_MAX_CONTENT_LENGTH}`
+      );
     }
 
     // Warnings for extreme values
     if (length < 500) {
-      result.warnings.push('Very short content may not provide enough context for good titles');
+      result.warnings.push(
+        'Very short content may not provide enough context for good titles'
+      );
     } else if (length > 5000) {
-      result.warnings.push('Very long content may increase API costs significantly');
+      result.warnings.push(
+        'Very long content may increase API costs significantly'
+      );
     }
 
     return result;
@@ -304,7 +374,7 @@ export class ValidationService {
     const provider = settings.aiProvider;
     const apiKeyField = this.getApiKeyField(provider);
     const apiKey = settings[apiKeyField] as string;
-    
+
     if (apiKey) {
       const apiKeyValidation = this.validateApiKey(apiKey, provider);
       result.errors.push(...apiKeyValidation.errors);
@@ -320,7 +390,7 @@ export class ValidationService {
     // Validate model for selected provider
     const modelField = this.getModelField(provider);
     const model = settings[modelField] as string;
-    
+
     if (model) {
       const modelValidation = this.validateModelName(model, provider);
       result.errors.push(...modelValidation.errors);
@@ -341,7 +411,10 @@ export class ValidationService {
       result.valid = false;
     }
 
-    const refinePromptValidation = this.validatePrompt(settings.refinePrompt, true);
+    const refinePromptValidation = this.validatePrompt(
+      settings.refinePrompt,
+      true
+    );
     result.errors.push(...refinePromptValidation.errors);
     result.warnings.push(...refinePromptValidation.warnings);
     if (!refinePromptValidation.valid) {
@@ -349,7 +422,9 @@ export class ValidationService {
     }
 
     // Validate temperature
-    const temperatureValidation = this.validateTemperature(settings.temperature);
+    const temperatureValidation = this.validateTemperature(
+      settings.temperature
+    );
     result.errors.push(...temperatureValidation.errors);
     result.warnings.push(...temperatureValidation.warnings);
     if (!temperatureValidation.valid) {
@@ -357,7 +432,9 @@ export class ValidationService {
     }
 
     // Validate title length
-    const titleLengthValidation = this.validateMaxTitleLength(settings.maxTitleLength);
+    const titleLengthValidation = this.validateMaxTitleLength(
+      settings.maxTitleLength
+    );
     result.errors.push(...titleLengthValidation.errors);
     result.warnings.push(...titleLengthValidation.warnings);
     if (!titleLengthValidation.valid) {
@@ -365,7 +442,9 @@ export class ValidationService {
     }
 
     // Validate content length
-    const contentLengthValidation = this.validateMaxContentLength(settings.maxContentLength);
+    const contentLengthValidation = this.validateMaxContentLength(
+      settings.maxContentLength
+    );
     result.errors.push(...contentLengthValidation.errors);
     result.warnings.push(...contentLengthValidation.warnings);
     if (!contentLengthValidation.valid) {
@@ -401,13 +480,13 @@ export class ValidationService {
 
     // Remove forbidden characters
     let safe = filename.replace(TITLE_CONFIG.FORBIDDEN_CHARS, '');
-    
+
     // Normalize whitespace
     safe = safe.replace(/\s+/g, ' ').trim();
-    
+
     // Remove leading/trailing dots and spaces
     safe = safe.replace(/^[ .]+|[ .]+$/g, '');
-    
+
     // Return fallback if empty
     return safe.length > 0 ? safe : TITLE_CONFIG.FALLBACK_TITLE;
   }
@@ -415,7 +494,10 @@ export class ValidationService {
   /**
    * Validate and sanitize API response
    */
-  public validateApiResponse(response: any, provider: AIProvider): ValidationResult {
+  public validateApiResponse(
+    response: any,
+    provider: AIProvider
+  ): ValidationResult {
     const result: ValidationResult = {
       valid: true,
       errors: [],
@@ -431,7 +513,11 @@ export class ValidationService {
     // Provider-specific validation
     switch (provider) {
       case 'openai':
-        if (!response.choices || !Array.isArray(response.choices) || response.choices.length === 0) {
+        if (
+          !response.choices ||
+          !Array.isArray(response.choices) ||
+          response.choices.length === 0
+        ) {
           result.valid = false;
           result.errors.push('Invalid OpenAI response format');
         } else if (!response.choices[0].message?.content) {
@@ -439,9 +525,13 @@ export class ValidationService {
           result.errors.push('OpenAI response missing content');
         }
         break;
-        
+
       case 'anthropic':
-        if (!response.content || !Array.isArray(response.content) || response.content.length === 0) {
+        if (
+          !response.content ||
+          !Array.isArray(response.content) ||
+          response.content.length === 0
+        ) {
           result.valid = false;
           result.errors.push('Invalid Anthropic response format');
         } else if (!response.content[0].text) {
@@ -449,7 +539,7 @@ export class ValidationService {
           result.errors.push('Anthropic response missing text');
         }
         break;
-        
+
       case 'google':
         if (
           !response.candidates ||
@@ -529,7 +619,9 @@ export function initializeValidationService(): ValidationService {
  */
 export function getValidationService(): ValidationService {
   if (!validationServiceInstance) {
-    throw new Error('ValidationService not initialized. Call initializeValidationService first.');
+    throw new Error(
+      'ValidationService not initialized. Call initializeValidationService first.'
+    );
   }
   return validationServiceInstance;
 }
