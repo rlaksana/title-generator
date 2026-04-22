@@ -22,7 +22,7 @@ const TEST_CONFIG = {
     url: 'https://generativelanguage.googleapis.com/v1beta/models'
   },
   openrouter: {
-    apiKey: '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',
+    apiKey: '',
     model: 'openai/gpt-oss-120b',
     url: 'https://openrouter.ai/api/v1/models'
   }
