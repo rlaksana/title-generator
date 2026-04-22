@@ -24,3 +24,4 @@ data.json
 # claude
 .claude/
 obsidian-title-generator.code-workspace
+.grepai/
