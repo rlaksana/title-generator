@@ -76,6 +76,8 @@ export class ModelService {
         return this.queryAnthropicModels(settings);
       case 'google':
         return this.queryGoogleModels(settings);
+      case 'openrouter':
+        return this.queryOpenRouterModels(settings);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -181,6 +183,36 @@ export class ModelService {
       )
       .map((model: any) => model.name.replace('models/', ''))
       .sort();
+  }
+
+  private async queryOpenRouterModels(
+    settings: TitleGeneratorSettings
+  ): Promise<string[]> {
+    if (!settings.openRouterApiKey.trim()) {
+      throw new Error('OpenRouter API key not set');
+    }
+
+    const response = await requestUrl({
+      url: 'https://openrouter.ai/api/v1/models',
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${settings.openRouterApiKey}`,
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `OpenRouter API error (${response.status}): ${response.text}`
+      );
+    }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from OpenRouter API');
+    }
+
+    return data.data.map((model: any) => model.id).sort();
   }
 
   private async cacheModels(
