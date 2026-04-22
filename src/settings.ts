@@ -1,5 +1,4 @@
 import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
-// Test 2: Consistency validation
 import type { AIProvider, TitleGeneratorSettings } from './types';
 import type TitleGeneratorPlugin from './main';
 import { ModelService } from './modelService';
@@ -20,6 +19,10 @@ export const AI_PROVIDERS: Record<
     name: 'Google Gemini',
     requiresApiKey: true,
   },
+  openrouter: {
+    name: 'OpenRouter',
+    requiresApiKey: true,
+  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
@@ -28,11 +31,13 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   openAiApiKey: '',
   anthropicApiKey: '',
   googleApiKey: '',
+  openRouterApiKey: '',
 
   // Models
   openAiModel: 'gpt-4o-mini',
   anthropicModel: 'claude-haiku-4-5',
   googleModel: 'gemini-3-flash-preview',
+  openRouterModel: 'openai/gpt-4o-mini',
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF',
@@ -41,16 +46,21 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   anthropicThinkingEnabled: true,
   anthropicThinkingBudget: 1024,
 
+  // OpenRouter Thinking Settings
+  openRouterReasoningEnabled: false,
+
   // Dynamic Model Caching
   cachedModels: {
     openai: { models: [], lastUpdated: 0 },
     anthropic: { models: [], lastUpdated: 0 },
     google: { models: [], lastUpdated: 0 },
+    openrouter: { models: [], lastUpdated: 0 },
   },
   modelLoadingState: {
     openai: false,
     anthropic: false,
     google: false,
+    openrouter: false,
   },
 
   // Title

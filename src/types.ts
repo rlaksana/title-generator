@@ -5,7 +5,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter';
 
 /**
  * Provider configuration interface
@@ -89,6 +89,24 @@ export interface GoogleResponse {
       probability: string;
     }>;
   }>;
+}
+
+/**
+ * API response interface for OpenRouter
+ */
+export interface OpenRouterResponse {
+  choices: Array<{
+    message: {
+      content: string;
+      role: string;
+    };
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 /**
@@ -266,6 +284,11 @@ export interface TitleGeneratorSettings {
   openAiModel: string;
   anthropicModel: string;
   googleModel: string;
+  openRouterModel: string;
+
+  // OpenRouter Settings
+  openRouterApiKey: string;
+  openRouterReasoningEnabled: boolean;
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
