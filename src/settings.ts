@@ -47,7 +47,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   anthropicThinkingBudget: 1024,
 
   // OpenRouter Thinking Settings
-  openRouterReasoningEnabled: false,
+  openRouterReasoningEnabled: true,
 
   // Dynamic Model Caching
   cachedModels: {
@@ -450,6 +450,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           });
       }
     }
+
+    // OpenRouter specific settings
+    if (provider === 'openrouter') {
+      this.renderOpenRouterSettings(containerEl);
+    }
   }
 
   private async renderModelSelection(
@@ -467,6 +472,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         break;
       case 'google':
         modelName = 'googleModel';
+        break;
+      case 'openrouter':
+        modelName = 'openRouterModel';
         break;
       default:
         return; // Should not happen
@@ -534,6 +542,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         break;
       case 'google':
         modelName = 'googleModel';
+        break;
+      case 'openrouter':
+        modelName = 'openRouterModel';
         break;
       default:
         return;
@@ -608,6 +619,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       case 'google':
         modelName = 'googleModel';
         break;
+      case 'openrouter':
+        modelName = 'openRouterModel';
+        break;
       default:
         return; // Should not happen
     }
@@ -678,8 +692,24 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return !!settings.anthropicApiKey.trim();
       case 'google':
         return !!settings.googleApiKey.trim();
+      case 'openrouter':
+        return !!settings.openRouterApiKey.trim();
       default:
         return false;
     }
+  }
+
+  private renderOpenRouterSettings(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName('Reasoning')
+      .setDesc('Enable reasoning for OpenRouter models that support it.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.openRouterReasoningEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.openRouterReasoningEnabled = value;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 }
