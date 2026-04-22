@@ -20,6 +20,11 @@ const TEST_CONFIG = {
     apiKey: '',
     model: 'gemini-3-flash-preview',
     url: 'https://generativelanguage.googleapis.com/v1beta/models'
+  },
+  openrouter: {
+    apiKey: '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',
+    model: 'openai/gpt-oss-120b',
+    url: 'https://openrouter.ai/api/v1/models'
   }
 };
 
@@ -98,7 +103,7 @@ class AIServiceTester {
       }
 
       const data = await response.json();
-      
+
       if (!data.models || !Array.isArray(data.models)) {
         throw new Error('Invalid response format from Google API');
       }
@@ -115,9 +120,45 @@ class AIServiceTester {
     }
   }
 
+  async testOpenRouterModels(apiKey) {
+    if (!apiKey.trim()) {
+      throw new Error('OpenRouter API key not set');
+    }
+
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error('Invalid response format from OpenRouter API');
+      }
+
+      return data.data
+        .map((model) => model.id)
+        .sort();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your internet connection.');
+      }
+      throw error;
+    }
+  }
+
   async testTitleGeneration(provider, model, content, apiKey, url) {
     const prompt = `Generate a concise, descriptive title for the following text. The title must be a maximum of 200 characters: ${content}`;
-    
+
     try {
       switch (provider) {
         case 'openai':
@@ -126,6 +167,8 @@ class AIServiceTester {
           return await this.testAnthropicGeneration(apiKey, model, prompt);
         case 'google':
           return await this.testGoogleGeneration(apiKey, model, prompt);
+        case 'openrouter':
+          return await this.testOpenRouterGeneration(apiKey, model, prompt);
         default:
           throw new Error(`Unsupported provider: ${provider}`);
       }
@@ -158,6 +201,36 @@ class AIServiceTester {
     return data.choices[0].message.content.trim();
   }
 
+  async testOpenRouterGeneration(apiKey, model, prompt, reasoning = true) {
+    const body = {
+      model: model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 100,
+    };
+
+    if (reasoning) {
+      body.reasoning = { enabled: true };
+    }
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  }
+
   
 
   
@@ -184,16 +257,17 @@ class CLITester {
     console.log('1. Test OpenAI Models');
     console.log('2. Test Anthropic Models');
     console.log('3. Test Google Models');
-    console.log('4. Test Title Generation');
-    console.log('5. Exit');
-    
-    const choice = await this.question('\nSelect option (1-5): ');
+    console.log('4. Test OpenRouter Models');
+    console.log('5. Test Title Generation');
+    console.log('6. Exit');
+
+    const choice = await this.question('\nSelect option (1-6): ');
     return choice.trim();
   }
 
   async testModels(provider) {
     console.log(`\n--- Testing ${provider.toUpperCase()} Models ---`);
-    
+
     try {
       let models;
       switch (provider) {
@@ -208,12 +282,20 @@ class CLITester {
           const googleKey = await this.question('Enter Google API key: ');
           models = await this.aiService.testGoogleModels(googleKey);
           break;
+        case 'openrouter':
+          const openrouterKey = await this.question('Enter OpenRouter API key (press Enter to use default): ');
+          const orKey = openrouterKey.trim() || this.aiService.config.openrouter.apiKey;
+          models = await this.aiService.testOpenRouterModels(orKey);
+          break;
       }
 
       console.log(`\n✅ Found ${models.length} models:`);
-      models.forEach((model, index) => {
+      models.slice(0, 20).forEach((model, index) => {
         console.log(`${index + 1}. ${model}`);
       });
+      if (models.length > 20) {
+        console.log(`... and ${models.length - 20} more`);
+      }
     } catch (error) {
       console.error(`❌ Error: ${error.message}`);
     }
@@ -221,23 +303,24 @@ class CLITester {
 
   async testTitleGeneration() {
     console.log('\n--- Test Title Generation ---');
-    
-    const provider = await this.question('Provider (openai/anthropic/google): ');
+
+    const provider = await this.question('Provider (openai/anthropic/google/openrouter): ');
     const model = await this.question('Model name: ');
     const content = await this.question('Content to generate title for: ');
-    
+
     let apiKey = '';
-    let url = '';
-    
-    if (['openai', 'anthropic', 'google'].includes(provider)) {
-      apiKey = await this.question(`Enter ${provider} API key: `);
+
+    if (provider === 'openrouter') {
+      const defaultKey = this.aiService.config.openrouter.apiKey;
+      const keyInput = await this.question(`OpenRouter API key (press Enter for default): `);
+      apiKey = keyInput.trim() || defaultKey;
     } else {
-      url = await this.question(`Enter ${provider} URL: `);
+      apiKey = await this.question(`Enter ${provider} API key: `);
     }
-    
+
     try {
       console.log('\n🔄 Generating title...');
-      const title = await this.aiService.testTitleGeneration(provider, model, content, apiKey, url);
+      const title = await this.aiService.testTitleGeneration(provider, model, content, apiKey, '');
       console.log(`\n✅ Generated title: "${title}"`);
     } catch (error) {
       console.error(`❌ Error: ${error.message}`);
@@ -261,9 +344,12 @@ class CLITester {
           await this.testModels('google');
           break;
         case '4':
-          await this.testTitleGeneration();
+          await this.testModels('openrouter');
           break;
         case '5':
+          await this.testTitleGeneration();
+          break;
+        case '6':
           console.log('👋 Goodbye!');
           this.rl.close();
           return;
