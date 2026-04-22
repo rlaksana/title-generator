@@ -177,6 +177,43 @@ class GoogleStrategy implements AIProviderStrategy {
 }
 
 /**
+ * OpenRouter Strategy Implementation
+ */
+class OpenRouterStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+
+    const body: any = {
+      model: settings.openRouterModel,
+      messages: [{ role: 'user', content: fullPrompt }],
+      temperature: settings.temperature,
+    };
+
+    if (settings.openRouterReasoningEnabled) {
+      body.reasoning = { enabled: true };
+    }
+
+    return {
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.openRouterApiKey}`,
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: OpenAIResponse): string {
+    return response.choices[0]?.message?.content?.trim() ?? '';
+  }
+}
+
+/**
  * A service class to handle all AI-powered title generation logic.
  * It uses the Strategy Pattern to handle different AI providers.
  */
@@ -190,6 +227,7 @@ export class AIService {
       openai: new OpenAIStrategy(),
       anthropic: new AnthropicStrategy(),
       google: new GoogleStrategy(),
+      openrouter: new OpenRouterStrategy(),
     };
   }
 
@@ -285,6 +323,11 @@ export class AIService {
         key: settings.googleApiKey,
         model: settings.googleModel,
         name: 'Google Gemini',
+      },
+      openrouter: {
+        key: settings.openRouterApiKey,
+        model: settings.openRouterModel,
+        name: 'OpenRouter',
       },
     };
 
