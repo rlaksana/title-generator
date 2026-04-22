@@ -191,6 +191,7 @@ class OpenRouterStrategy implements AIProviderStrategy {
       model: settings.openRouterModel,
       messages: [{ role: 'user', content: fullPrompt }],
       temperature: settings.temperature,
+      max_tokens: settings.maxTitleLength * 4,
     };
 
     if (settings.openRouterReasoningEnabled) {
