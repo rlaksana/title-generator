@@ -345,7 +345,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const keyName =
         provider === 'openai'
           ? 'openAiApiKey'
-          : (`${provider}ApiKey` as keyof TitleGeneratorSettings);
+          : provider === 'openrouter'
+            ? 'openRouterApiKey'
+            : (`${provider}ApiKey` as keyof TitleGeneratorSettings);
       let initialValue = this.plugin.settings[keyName] as string;
       let currentValue = initialValue;
       let textEl: any, cancelBtn: any, okBtn: any;
