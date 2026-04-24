@@ -17,7 +17,6 @@ import {
   getValidationService,
 } from './validation';
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
-import { detectAndRemoveDuplicateWithAI } from './utils';
 import { GfmService } from './gfmService';
 import { GistService } from './gistService';
 import type {
@@ -293,18 +292,7 @@ export default class TitleGeneratorPlugin extends Plugin {
         const sanitizedTitle =
           this.validationService.sanitizeFilename(newTitle);
 
-        // Check for duplicate titles in content if enabled
         let finalContent = content;
-        if (this.settings.enableDuplicateRemoval) {
-          const duplicateResult = await this.handleDuplicateTitles(
-            file,
-            sanitizedTitle,
-            content
-          );
-          if (duplicateResult.contentModified) {
-            finalContent = duplicateResult.modifiedContent;
-          }
-        }
 
         // Reformat body to GFM if enabled
         if (this.settings.enableGfmReformatting) {
@@ -312,7 +300,8 @@ export default class TitleGeneratorPlugin extends Plugin {
           const preTransformed = this.gfmService.preTransform(finalContent);
           const reformatted = await this.aiService.reformatForGfm(
             preTransformed,
-            this.settings.gfmPrompt
+            this.settings.gfmPrompt,
+            sanitizedTitle
           );
           if (reformatted) {
             finalContent = this.gfmService.postTransform(reformatted);
@@ -433,66 +422,8 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
   }
 
-  private async handleDuplicateTitles(
-    file: TFile,
-    generatedTitle: string,
-    content: string
-  ): Promise<{ contentModified: boolean; modifiedContent: string }> {
-    try {
-      // Use AI-based detection for title duplicates
-      const aiDetectionResult = await this.detectDuplicateWithAI(
-        generatedTitle,
-        content
-      );
-      if (aiDetectionResult.contentModified) {
-        this.logger.info(
-          `AI detected and removed duplicate title content from ${file.path}`
-        );
-        new Notice('Removed duplicate title from note content (AI detection)');
-        return aiDetectionResult;
-      }
-
-      // No duplicate title content found
-      this.logger.debug(`No duplicate title content found in ${file.path}`);
-      return { contentModified: false, modifiedContent: content };
-    } catch (error) {
-      this.errorHandler.handleError(error as Error, {
-        context: 'handle-duplicate-titles',
-        file: file.path,
-      });
-      return { contentModified: false, modifiedContent: content };
-    }
-  }
-
-  private async detectDuplicateWithAI(
-    title: string,
-    content: string
-  ): Promise<{ contentModified: boolean; modifiedContent: string }> {
-    try {
-      // Create a bound function for AI calls
-      const aiCallFunction = async (
-        prompt: string,
-        content: string
-      ): Promise<string> => {
-        return await this.aiService.makeAICall(prompt, content);
-      };
-
-      // Use the AI-based duplicate detection
-      const result = await detectAndRemoveDuplicateWithAI(
-        title,
-        content,
-        aiCallFunction
-      );
-      return result;
-    } catch (error) {
-      this.logger.debug(
-        'AI duplicate detection failed, falling back to traditional method:',
-        error
-      );
-      return { contentModified: false, modifiedContent: content };
-    }
-  }
-
+  
+  
   private getGistIdFromFrontmatter(content: string): string | undefined {
     const match = content.match(/^gist_id:\s*(.+)\s*$/m);
     if (match) {
