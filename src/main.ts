@@ -329,8 +329,11 @@ export default class TitleGeneratorPlugin extends Plugin {
           }
 
           // Gist auto-share after rename
-          let gistFrontmatterAdded = false;
-          if (this.settings.enableGistAutoShare && this.settings.githubPat) {
+          const didGfmReformat = this.settings.enableGfmReformatting && finalContent !== content;
+          const didGistShare = this.settings.enableGistAutoShare && this.settings.githubPat;
+          let gistUrlForNotice: string | undefined;
+
+          if (didGistShare) {
             // Get existing gist_id from frontmatter if file was previously shared
             const existingGistId = this.getGistIdFromFrontmatter(finalContent);
 
@@ -348,12 +351,11 @@ export default class TitleGeneratorPlugin extends Plugin {
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 frontmatterContent
               );
-              gistFrontmatterAdded = true;
 
               // Copy to clipboard
               const clipboardText = `${sanitizedTitle} | ${gistResult.gistUrl}`;
               navigator.clipboard.writeText(clipboardText);
-              new Notice(`Title & Gist URL copied to clipboard!`);
+              gistUrlForNotice = gistResult.gistUrl;
             } else {
               // ROLLBACK: Rename file back to original and restore original content
               new Notice(`Gist publish failed after 3 attempts. Rolling back file rename.`);
@@ -368,7 +370,12 @@ export default class TitleGeneratorPlugin extends Plugin {
             }
           }
 
-          new Notice(`Title generated: "${sanitizedTitle}"`);
+          // Build descriptive success notice
+          let noticeParts: string[] = [];
+          noticeParts.push(`Title: "${sanitizedTitle}"`);
+          if (didGfmReformat) noticeParts.push('GFM reformatted');
+          if (gistUrlForNotice) noticeParts.push('shared to Gist');
+          new Notice(`${noticeParts.join(' • ')} — copied to clipboard!`);
           this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
           return {
             success: true,
