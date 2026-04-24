@@ -292,7 +292,7 @@ export class AIService {
   /**
    * Reformat content to be GitHub Flavored Markdown (GFM) compliant
    */
-  async reformatForGfm(noteContent: string, gfmPrompt: string): Promise<string> {
+  async reformatForGfm(noteContent: string, gfmPrompt: string, title?: string): Promise<string> {
     const settings = this.getSettings();
 
     if (!this.isConfigurationValid(settings)) {
@@ -300,8 +300,11 @@ export class AIService {
     }
 
     try {
-      const fullPrompt = `${gfmPrompt}\n\n${noteContent}`.trim();
-      return await this.callAI(fullPrompt, '');
+      let prompt = `${gfmPrompt}\n\n${noteContent}`.trim();
+      if (title) {
+        prompt += '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' + title + '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+      }
+      return await this.callAI(prompt, '');
     } catch (error) {
       this.handleError(error, settings);
       return '';
