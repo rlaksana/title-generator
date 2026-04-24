@@ -60,7 +60,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       this.addCommand({
         id: 'generate-title',
-        name: 'Generate title for current note',
+        name: 'Rename title & (optional) Gist share',
         editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
       });
 
@@ -70,7 +70,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           if (file instanceof TFile && file.extension === 'md') {
             menu.addItem((item) =>
               item
-                .setTitle('Generate title')
+                .setTitle('Rename title & (optional) Gist share')
                 .setIcon('lucide-edit-3')
                 .onClick(() => this.generateTitleForFile(file))
             );
@@ -87,7 +87,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           if (markdownFiles.length > 0) {
             menu.addItem((item) =>
               item
-                .setTitle(`Generate titles for ${markdownFiles.length} notes`)
+                .setTitle(`Rename ${markdownFiles.length} titles & (optional) Gist share`)
                 .setIcon('lucide-edit-3')
                 .onClick(() =>
                   this.generateTitlesForMultipleFiles(markdownFiles)
