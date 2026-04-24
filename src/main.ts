@@ -64,6 +64,19 @@ export default class TitleGeneratorPlugin extends Plugin {
         editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
       });
 
+      this.addCommand({
+        id: 'copy-title-gist-link',
+        name: 'Copy title and Gist link',
+        editorCallback: (editor: Editor) => {
+          const file = this.app.workspace.getActiveFile();
+          if (!file) {
+            new Notice('No active file found.');
+            return;
+          }
+          this.copyTitleAndGistLink(file);
+        },
+      });
+
 
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
@@ -491,6 +504,44 @@ export default class TitleGeneratorPlugin extends Plugin {
       return id;
     }
     return undefined;
+  }
+
+  private getGistUrlFromFrontmatter(content: string): string | undefined {
+    const match = content.match(/^gist_url:\s*(.+)\s*$/m);
+    if (match) {
+      let url = match[1].trim();
+      // Strip surrounding quotes if present
+      if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+        url = url.slice(1, -1);
+      }
+      return url;
+    }
+    return undefined;
+  }
+
+  private async copyTitleAndGistLink(file: TFile): Promise<void> {
+    try {
+      const content = await this.app.vault.cachedRead(file);
+      const gistUrl = this.getGistUrlFromFrontmatter(content);
+
+      if (!gistUrl) {
+        new Notice('No Gist link found in this file. Generate a title first to create a Gist.');
+        return;
+      }
+
+      // Extract title from filename (basename without extension)
+      const title = file.basename;
+
+      const clipboardText = `${title} | ${gistUrl}`;
+      await navigator.clipboard.writeText(clipboardText);
+      new Notice(`Copied: ${title} | ${gistUrl}`);
+    } catch (error) {
+      this.errorHandler.handleError(error as Error, {
+        context: 'copy-title-gist-link',
+        file: file.path,
+      });
+      new Notice('Failed to copy title and Gist link.');
+    }
   }
 
   private addGistFrontmatter(content: string, gistId: string, gistUrl: string): string {
