@@ -222,11 +222,6 @@ export interface UIElements {
 }
 
 /**
- * Duplicate detection sensitivity levels
- */
-export type DuplicateDetectionSensitivity = 'strict' | 'normal' | 'loose';
-
-/**
  * GFM reformat options
  */
 export interface GfmReformatOptions {
@@ -253,38 +248,6 @@ export interface GistPublishResult {
   gistId?: string;
   gistUrl?: string;
   error?: string;
-}
-
-/**
- * Represents a title match found in content
- */
-export interface TitleMatch {
-  startIndex: number;
-  endIndex: number;
-  matchedText: string;
-  similarity: number;
-  lineNumber: number;
-  isMarkdownHeader: boolean;
-  headerLevel?: number;
-}
-
-/**
- * Result of duplicate detection in content
- */
-export interface DuplicateDetectionResult {
-  found: boolean;
-  matches: TitleMatch[];
-  contentWithoutDuplicates?: string;
-  totalMatches: number;
-}
-
-/**
- * Configuration for content modification
- */
-export interface ContentModificationOptions {
-  removeAllMatches: boolean;
-  preserveFormatting: boolean;
-  confirmBeforeRemoval: boolean;
 }
 
 /**
