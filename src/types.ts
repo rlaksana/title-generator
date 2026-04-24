@@ -344,13 +344,6 @@ export interface TitleGeneratorSettings {
   maxContentLength: number;
   refinePrompt: string;
 
-  // Duplicate Detection Settings
-  enableDuplicateRemoval: boolean;
-  duplicateDetectionSensitivity: DuplicateDetectionSensitivity;
-  autoRemoveDuplicates: boolean;
-  confirmBeforeRemoval: boolean;
-  removeOnlyExactMatches: boolean;
-
   // GFM Reformatting Settings
   enableGfmReformatting: boolean;
   gfmPrompt: string;
