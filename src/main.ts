@@ -362,7 +362,7 @@ export default class TitleGeneratorPlugin extends Plugin {
                 file.path
               );
               // Also rollback the content - remove gist frontmatter that was added
-              await this.app.vault.modify(file, finalContent);
+              await this.app.vault.modify(file, content);
               // Return failure
               return { success: false, originalPath: file.path, error: gistResult.error };
             }
@@ -474,7 +474,7 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   private getGistIdFromFrontmatter(content: string): string | undefined {
-    const match = content.match(/^gist_id:\s*["']?([^"'\n]+)["']?\s*$/m);
+    const match = content.match(/^gist_id:\s*(.+)\s*$/m);
     return match ? match[1] : undefined;
   }
 
