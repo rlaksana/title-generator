@@ -355,12 +355,14 @@ export default class TitleGeneratorPlugin extends Plugin {
               navigator.clipboard.writeText(clipboardText);
               new Notice(`Title & Gist URL copied to clipboard!`);
             } else {
-              // ROLLBACK: Rename file back to original
+              // ROLLBACK: Rename file back to original and restore original content
               new Notice(`Gist publish failed after 3 attempts. Rolling back file rename.`);
               await this.app.fileManager.renameFile(
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 file.path
               );
+              // Also rollback the content - remove gist frontmatter that was added
+              await this.app.vault.modify(file, finalContent);
               // Return failure
               return { success: false, originalPath: file.path, error: gistResult.error };
             }
