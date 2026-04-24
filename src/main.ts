@@ -19,6 +19,7 @@ import {
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
 import { detectAndRemoveDuplicateWithAI } from './utils';
 import { GfmService } from './gfmService';
+import { GistService } from './gistService';
 import type {
   TitleGeneratorSettings,
   FileOperationResult,
@@ -29,6 +30,7 @@ export default class TitleGeneratorPlugin extends Plugin {
   settings: TitleGeneratorSettings;
   aiService: AIService;
   gfmService: GfmService;
+  gistService: GistService;
   private logger = initializeLogger({
     debugMode: false,
     pluginName: PLUGIN_NAME,
@@ -49,6 +51,12 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       // Initialize GFM service
       this.gfmService = new GfmService();
+
+      // Initialize Gist service
+      this.gistService = new GistService(() => ({
+        githubPat: this.settings.githubPat,
+        enableGistAutoShare: this.settings.enableGistAutoShare,
+      }));
 
       this.addCommand({
         id: 'generate-title',
@@ -320,6 +328,44 @@ export default class TitleGeneratorPlugin extends Plugin {
             );
           }
 
+          // Gist auto-share after rename
+          let gistFrontmatterAdded = false;
+          if (this.settings.enableGistAutoShare && this.settings.githubPat) {
+            // Get existing gist_id from frontmatter if file was previously shared
+            const existingGistId = this.getGistIdFromFrontmatter(finalContent);
+
+            statusBarItem.setText('Publishing to Gist...');
+            const gistResult = await this.gistService.publishToGist(
+              finalContent,
+              sanitizedTitle + ext,
+              existingGistId
+            );
+
+            if (gistResult.success) {
+              // Add frontmatter with gist_id and gist_url
+              const frontmatterContent = this.addGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!);
+              await this.app.vault.modify(
+                this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
+                frontmatterContent
+              );
+              gistFrontmatterAdded = true;
+
+              // Copy to clipboard
+              const clipboardText = `${sanitizedTitle} | ${gistResult.gistUrl}`;
+              navigator.clipboard.writeText(clipboardText);
+              new Notice(`Title & Gist URL copied to clipboard!`);
+            } else {
+              // ROLLBACK: Rename file back to original
+              new Notice(`Gist publish failed after 3 attempts. Rolling back file rename.`);
+              await this.app.fileManager.renameFile(
+                this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
+                file.path
+              );
+              // Return failure
+              return { success: false, originalPath: file.path, error: gistResult.error };
+            }
+          }
+
           new Notice(`Title generated: "${sanitizedTitle}"`);
           this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
           return {
@@ -423,5 +469,23 @@ export default class TitleGeneratorPlugin extends Plugin {
       );
       return { contentModified: false, modifiedContent: content };
     }
+  }
+
+  private getGistIdFromFrontmatter(content: string): string | undefined {
+    const match = content.match(/^gist_id:\s*["']?([^"'\n]+)["']?\s*$/m);
+    return match ? match[1] : undefined;
+  }
+
+  private addGistFrontmatter(content: string, gistId: string, gistUrl: string): string {
+    const frontmatter = `gist_id: "${gistId}"\ngist_url: "${gistUrl}"\n`;
+    if (content.startsWith('---')) {
+      // Insert after opening --- and frontmatter block
+      const endOfFrontmatter = content.indexOf('---', 3);
+      if (endOfFrontmatter !== -1) {
+        return content.slice(0, endOfFrontmatter + 3) + '\n' + frontmatter + content.slice(endOfFrontmatter + 3);
+      }
+    }
+    // No frontmatter exists, add at top
+    return '---\n' + frontmatter + '---\n' + content;
   }
 }
