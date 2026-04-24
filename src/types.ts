@@ -246,6 +246,16 @@ export interface GfmReformatResult {
 }
 
 /**
+ * Gist publish result
+ */
+export interface GistPublishResult {
+  success: boolean;
+  gistId?: string;
+  gistUrl?: string;
+  error?: string;
+}
+
+/**
  * Represents a title match found in content
  */
 export interface TitleMatch {
@@ -344,4 +354,8 @@ export interface TitleGeneratorSettings {
   // GFM Reformatting Settings
   enableGfmReformatting: boolean;
   gfmPrompt: string;
+
+  // Gist Auto-Share Settings
+  enableGistAutoShare: boolean;
+  githubPat: string;
 }

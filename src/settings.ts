@@ -96,6 +96,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     '- Ensure URLs are properly formatted for auto-linking\n' +
     '- Remove any HTML tags that are not allowed in Gist\n\n' +
     'Output ONLY the transformed content, no explanations.',
+
+  // Gist Auto-Share Settings
+  enableGistAutoShare: false,
+  githubPat: '',
 };
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {
