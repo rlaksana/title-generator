@@ -18,6 +18,7 @@ import {
 } from './validation';
 import { PLUGIN_NAME, UI_CONFIG } from './constants';
 import { detectAndRemoveDuplicateWithAI } from './utils';
+import { GfmService } from './gfmService';
 import type {
   TitleGeneratorSettings,
   FileOperationResult,
@@ -27,6 +28,7 @@ import type {
 export default class TitleGeneratorPlugin extends Plugin {
   settings: TitleGeneratorSettings;
   aiService: AIService;
+  gfmService: GfmService;
   private logger = initializeLogger({
     debugMode: false,
     pluginName: PLUGIN_NAME,
@@ -45,11 +47,15 @@ export default class TitleGeneratorPlugin extends Plugin {
       // Initialize AI service with enhanced error handling
       this.aiService = new AIService(() => this.settings);
 
+      // Initialize GFM service
+      this.gfmService = new GfmService();
+
       this.addCommand({
         id: 'generate-title',
         name: 'Generate title for current note',
         editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
       });
+
 
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
@@ -276,6 +282,19 @@ export default class TitleGeneratorPlugin extends Plugin {
           );
           if (duplicateResult.contentModified) {
             finalContent = duplicateResult.modifiedContent;
+          }
+        }
+
+        // Reformat body to GFM if enabled
+        if (this.settings.enableGfmReformatting) {
+          statusBarItem.setText('Reformatting body for Gist...');
+          const preTransformed = this.gfmService.preTransform(finalContent);
+          const reformatted = await this.aiService.reformatForGfm(
+            preTransformed,
+            this.settings.gfmPrompt
+          );
+          if (reformatted) {
+            finalContent = this.gfmService.postTransform(reformatted);
           }
         }
 

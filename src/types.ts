@@ -227,6 +227,25 @@ export interface UIElements {
 export type DuplicateDetectionSensitivity = 'strict' | 'normal' | 'loose';
 
 /**
+ * GFM reformat options
+ */
+export interface GfmReformatOptions {
+  content: string;
+  prompt?: string;
+  temperature?: number;
+}
+
+/**
+ * GFM reformat result
+ */
+export interface GfmReformatResult {
+  success: boolean;
+  originalContent: string;
+  reformattedContent?: string;
+  error?: string;
+}
+
+/**
  * Represents a title match found in content
  */
 export interface TitleMatch {
@@ -321,4 +340,8 @@ export interface TitleGeneratorSettings {
   autoRemoveDuplicates: boolean;
   confirmBeforeRemoval: boolean;
   removeOnlyExactMatches: boolean;
+
+  // GFM Reformatting Settings
+  enableGfmReformatting: boolean;
+  gfmPrompt: string;
 }

@@ -289,6 +289,25 @@ export class AIService {
     return await this.callAI(prompt, content);
   }
 
+  /**
+   * Reformat content to be GitHub Flavored Markdown (GFM) compliant
+   */
+  async reformatForGfm(noteContent: string, gfmPrompt: string): Promise<string> {
+    const settings = this.getSettings();
+
+    if (!this.isConfigurationValid(settings)) {
+      return '';
+    }
+
+    try {
+      const fullPrompt = `${gfmPrompt}\n\n${noteContent}`.trim();
+      return await this.callAI(fullPrompt, '');
+    } catch (error) {
+      this.handleError(error, settings);
+      return '';
+    }
+  }
+
   private async callAI(prompt: string, content: string): Promise<string> {
     const settings = this.getSettings();
     const strategy = this.strategies[settings.aiProvider];

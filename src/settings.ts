@@ -84,6 +84,18 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   autoRemoveDuplicates: false,
   confirmBeforeRemoval: true,
   removeOnlyExactMatches: false,
+
+  // GFM Reformatting Settings
+  enableGfmReformatting: false,
+  gfmPrompt:
+    'You are a GitHub Flavored Markdown (GFM) formatter. Transform the following content to be fully GFM-compliant:\n' +
+    '- Use fenced code blocks (```) with language hints instead of indented code\n' +
+    '- Ensure tables use proper GFM syntax with alignment (|:---|:---:|---:)\n' +
+    '- Normalize task lists to - [ ] and - [x]\n' +
+    '- Convert <del> tags to ~~strikethrough~~\n' +
+    '- Ensure URLs are properly formatted for auto-linking\n' +
+    '- Remove any HTML tags that are not allowed in Gist\n\n' +
+    'Output ONLY the transformed content, no explanations.',
 };
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {
@@ -330,10 +342,27 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.removeOnlyExactMatches)
             .onChange(async (value) => {
               this.plugin.settings.removeOnlyExactMatches = value;
-              await this.plugin.saveSettings();
+              this.plugin.saveSettings();
             });
         });
     }
+
+    /* --- GFM Reformatting Settings --- */
+    containerEl.createEl('h3', { text: 'Gist / GFM Reformatting' });
+
+    new Setting(containerEl)
+      .setName('Reformat body to GFM on title generation')
+      .setDesc(
+        'When generating a title, also reformat the entire body content to be GitHub Flavored Markdown (GFM) compliant.'
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.enableGfmReformatting)
+          .onChange(async (value) => {
+            this.plugin.settings.enableGfmReformatting = value;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 
   private renderProviderSettings(containerEl: HTMLElement): void {
