@@ -367,6 +367,63 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+
+    /* --- Gist Auto-Share Settings --- */
+    containerEl.createEl('h3', { text: 'Gist Auto-Share' });
+
+    new Setting(containerEl)
+      .setName('Auto-share to Gist')
+      .setDesc('After generating a title, automatically publish the note to a secret GitHub Gist.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.enableGistAutoShare)
+          .onChange(async (value) => {
+            this.plugin.settings.enableGistAutoShare = value;
+            await this.plugin.saveSettings();
+            this.display(); // Re-render to show/hide PAT input
+          });
+      });
+
+    if (this.plugin.settings.enableGistAutoShare) {
+      // GitHub PAT input using same pattern as API key inputs
+      let textEl: any, cancelBtn: any, okBtn: any;
+      let initialValue = this.plugin.settings.githubPat;
+      let currentValue = initialValue;
+
+      const apiKeySetting = new Setting(containerEl)
+        .setName('GitHub Personal Access Token')
+        .setDesc('Required for Gist auto-share. Create at https://github.com/settings/tokens');
+      apiKeySetting.addText((text) => {
+        textEl = text;
+        text.setPlaceholder('ghp_xxxxxxxxxxxx')
+          .setValue(initialValue)
+          .onChange((value) => {
+            currentValue = value;
+            const changed = currentValue !== initialValue;
+            cancelBtn.setDisabled(!changed);
+            okBtn.setDisabled(!changed);
+          });
+      });
+      apiKeySetting.addButton((btn) => {
+        cancelBtn = btn;
+        btn.setButtonText('Cancel').setDisabled(true).onClick(() => {
+          textEl.setValue(initialValue);
+          currentValue = initialValue;
+          cancelBtn.setDisabled(true);
+          okBtn.setDisabled(true);
+        });
+      });
+      apiKeySetting.addButton((btn) => {
+        okBtn = btn;
+        btn.setButtonText('OK').setDisabled(true).onClick(async () => {
+          this.plugin.settings.githubPat = currentValue;
+          await this.plugin.saveSettings();
+          initialValue = currentValue;
+          cancelBtn.setDisabled(true);
+          okBtn.setDisabled(true);
+        });
+      });
+    }
   }
 
   private renderProviderSettings(containerEl: HTMLElement): void {
