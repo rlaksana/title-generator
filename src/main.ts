@@ -475,7 +475,15 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   private getGistIdFromFrontmatter(content: string): string | undefined {
     const match = content.match(/^gist_id:\s*(.+)\s*$/m);
-    return match ? match[1] : undefined;
+    if (match) {
+      let id = match[1].trim();
+      // Strip surrounding quotes if present
+      if ((id.startsWith('"') && id.endsWith('"')) || (id.startsWith("'") && id.endsWith("'"))) {
+        id = id.slice(1, -1);
+      }
+      return id;
+    }
+    return undefined;
   }
 
   private addGistFrontmatter(content: string, gistId: string, gistUrl: string): string {
