@@ -34,6 +34,12 @@ export class GfmService {
   postTransform(content: string): string {
     let result = content;
 
+    // Strip leaked instructions from AI output
+    result = this.stripInstructions(result);
+
+    // Strip Q&A prefix from AI output
+    result = this.stripQaPrefix(result);
+
     // Convert remaining indented code to fenced code blocks
     result = this.transformCodeBlocks(result);
 
@@ -50,6 +56,79 @@ export class GfmService {
     result = result.replace(/\n{3,}/g, '\n\n');
 
     return result;
+  }
+
+  /**
+   * Strip leaked instructions from AI output
+   * Removes common instruction patterns that AI may include in its response
+   */
+  private stripInstructions(content: string): string {
+    let result = content;
+
+    // Common instruction patterns that leak into AI output
+    const instructionPatterns = [
+      /^Instructions?:.*$/gim,
+      /^You are a helpful assistant\.?$/gim,
+      /^Format the following.*$/gim,
+      /^Here's the (reformatted |formatted )?content.*$/gim,
+      /^Below is the (reformatted |formatted )?content.*$/gim,
+      /^(Sure|Sure!|Of course|Here's).*reformat/i,
+    ];
+
+    const lines = result.split('\n');
+    const filteredLines = lines.filter((line) => {
+      return !instructionPatterns.some((pattern) => pattern.test(line));
+    });
+
+    result = filteredLines.join('\n');
+
+    return result;
+  }
+
+  /**
+   * Strip Q&A prefix from AI output
+   * Removes question lines (Q:/Question:) that appear before answer content
+   */
+  private stripQaPrefix(content: string): string {
+    const lines = content.split('\n');
+
+    // Check if content starts with Q&A pattern
+    if (lines.length < 2) return content;
+
+    const firstLine = lines[0].trim();
+    const secondLine = lines.length > 1 ? lines[1].trim() : '';
+
+    const isQuestionStart =
+      firstLine.match(/^(?:Q:|Question:)\s*.+$/i) !== null;
+    const isAnswerStart =
+      secondLine.match(/^(?:A:|Answer:)\s*.+$/i) !== null;
+
+    if (!isQuestionStart || !isAnswerStart) return content;
+
+    // Find the answer line index (line 1) and skip question lines
+    // Remove the question line (0) and any blank lines between question and answer
+    const resultLines: string[] = [];
+    let skipUntilAnswer = true;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      if (skipUntilAnswer && trimmed.match(/^(?:A:|Answer:)\s*.+$/i)) {
+        // This is the answer line - include it and stop skipping
+        resultLines.push(line);
+        skipUntilAnswer = false;
+      } else if (skipUntilAnswer && trimmed === '') {
+        // Skip blank lines before the answer
+        continue;
+      } else if (!skipUntilAnswer) {
+        // Include all lines after we've found the answer
+        resultLines.push(line);
+      }
+      // If skipUntilAnswer and line is not empty and not the answer, skip it (question content)
+    }
+
+    return resultLines.join('\n');
   }
 
   /**
