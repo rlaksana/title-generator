@@ -80,6 +80,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
 
   // GFM Reformatting Settings
   enableGfmReformatting: false,
+  stripCitations: true,
   gfmPrompt:
     'You are a GitHub Flavored Markdown (GFM) formatter. Transform the following content to be fully GFM-compliant:\n' +
     '- Use fenced code blocks (```) with language hints instead of indented code\n' +
@@ -272,6 +273,20 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.enableGfmReformatting)
           .onChange(async (value) => {
             this.plugin.settings.enableGfmReformatting = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Strip citation markers')
+      .setDesc(
+        'Remove citation and reference markers (e.g., [1], ^[2]^) from content before processing. Useful for AI-generated or research content.'
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.stripCitations)
+          .onChange(async (value) => {
+            this.plugin.settings.stripCitations = value;
             await this.plugin.saveSettings();
           });
       });

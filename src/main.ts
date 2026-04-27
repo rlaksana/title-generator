@@ -297,7 +297,7 @@ export default class TitleGeneratorPlugin extends Plugin {
         // Reformat body to GFM if enabled
         if (this.settings.enableGfmReformatting) {
           statusBarItem.setText('Reformatting body for Gist...');
-          const preTransformed = this.gfmService.preTransform(finalContent);
+          const preTransformed = this.gfmService.preTransform(finalContent, this.settings.stripCitations);
           const reformatted = await this.aiService.reformatForGfm(
             preTransformed,
             this.settings.gfmPrompt,

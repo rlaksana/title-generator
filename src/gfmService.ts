@@ -1,3 +1,5 @@
+import { stripCitations } from './citationCleanerService';
+
 /**
  * GFM (GitHub Flavored Markdown) transformation service
  * Acts as a "compiler" targeting GFM specification
@@ -6,9 +8,15 @@
 export class GfmService {
   /**
    * Pre-transform: normalize input Markdown before AI processing
+   * @param stripCitations - if true, also remove citation markers from content
    */
-  preTransform(content: string): string {
+  preTransform(content: string, stripCitationsSetting: boolean = false): string {
     let result = content;
+
+    // Strip citation markers if enabled
+    if (stripCitationsSetting) {
+      result = stripCitations(result);
+    }
 
     // Normalize line endings
     result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
