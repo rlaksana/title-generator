@@ -1,20 +1,24 @@
-# Title Generator v3.0.10
+# Title Generator v3.0.95
 
-> **Latest Update**: Auto version bump enabled - every commit/push increments version automatically. Added **Debug Mode** toggle for troubleshooting logs.
+> **Latest Update**: Three commands now available — generate title from note, paste to new note, or paste & share to Gist. Auto version bump enabled.
 
-A completely rewritten Obsidian plugin to generate note titles using multiple AI providers. This new version is built for stability, efficiency, and intelligence, with guaranteed compatibility on both Desktop and Mobile (Android/iOS).
+A completely rewritten Obsidian plugin to generate note titles using multiple AI providers with optional Gist sharing and GFM formatting.
 
 ## Key Features
 
-- **Dynamic Model Loading with Search**: Automatically detects and loads available models from your configured AI providers with a searchable dropdown - no more hardcoded model lists!
-- **Intelligent Title Refinement**: If an AI-generated title is too long, the plugin asks the AI to shorten it, preserving the core meaning instead of just cutting it off.
-- **Cost-Efficient Analysis**: Limit the amount of text sent to the AI (e.g., the first 2000 characters) to significantly reduce token usage and cost on long notes.
-- **Multi-Provider AI**: Choose from OpenAI, Anthropic, or Google Gemini.
-- **Smart Model Caching**: Models are cached with TTL (1 hour) and automatically refreshed when API keys change.
-- **Mobile-First Design**: All API calls use Obsidian's native `fetch` API, ensuring 100% compatibility on mobile devices and removing heavy dependencies.
-- **Fully Customizable Prompts**: Tailor the initial prompt and the refinement prompt to fit your exact needs.
-- **Smart Filename Sanitization**: Automatically removes OS-forbidden characters and normalizes whitespace to create safe, clean filenames.
-- **Debug Mode**: Enable detailed console logging for troubleshooting.
+- **Three Workflow Commands**:
+  - **Rename title & (optional) Gist share** — Generate title for current note, optionally publish to Gist
+  - **Paste & Share to Gist** — Read clipboard, create new note, generate title, reformat to GFM, publish to GitHub Gist
+  - **Paste to new note** — Read clipboard, create new note, generate title (no GFM/Gist)
+- **Dynamic Model Loading with Search**: Automatically detects and loads available models from your configured AI providers
+- **GFM Reformatting**: Transform AI-generated content into clean GitHub Flavored Markdown (task lists, tables, fenced code blocks, strikethrough)
+- **Citation/Reference Cleaning**: Strip citation markers from AI output (works with Perplexity, Semantic Scholar, etc.)
+- **Q&A Prefix Stripping**: Remove Q&A patterns (Q:/Question: / A:/Answer:) from Perplexity-generated content
+- **Smart Duplicate Detection**: AI-powered duplicate detection during GFM reformatting
+- **Gist Auto-Share**: Automatically publish reformatted content to GitHub Gist with frontmatter tracking
+- **Multi-Provider AI**: Choose from OpenAI, Anthropic, Google Gemini, or OpenRouter
+- **Intelligent Title Refinement**: AI shortens titles while preserving meaning
+- **Mobile-First Design**: All API calls use Obsidian's native `fetch` API
 
 ## Installation
 
@@ -36,93 +40,109 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 2. Place these files in your vault's `.obsidian/plugins/title-generator/` directory
 3. Reload Obsidian and enable the plugin
 
-### Installation Troubleshooting
-- **CDN Issues**: Run `npm run check-cdn` to verify release accessibility
-- **Force Fix**: Run `npm run force-release` to recreate the latest release
-- **Status Check**: Visit [GitHub Status](https://githubstatus.com) for CDN issues
-- **Get Help**: Run `npm run release-help` for available commands
-
 ## Usage
 
--   **Command Palette**: Open the command palette (`Ctrl/Cmd + P`) and search for "Generate title for current note".
--   **File Menu**: Right-click a note in the file explorer and select "Generate title". You can also select multiple notes to process them in a batch.
+### Command Palette
+Open the command palette (`Ctrl/Cmd + P`) and search for one of:
+
+| Command | Description |
+|---------|-------------|
+| **Rename title & (optional) Gist share** | Generate title for current/selected note(s). Optional Gist share if enabled in settings. |
+| **Paste clipboard & share to Gist** | Read clipboard → create new note → generate title → reformat GFM → publish to Gist → open note |
+| **Paste to new note** | Read clipboard → create new note → generate title (normal flow, no GFM/Gist) |
+| **Copy title and Gist link** | Copy formatted title + Gist URL from current note |
+
+### File Menu
+Right-click a note in the file explorer:
+- **"Rename title & (optional) Gist share"** — Process single note
+- **"Rename N titles & (optional) Gist share"** — Batch process multiple notes
 
 ## Settings
 
-Open **Settings → Title Generator** to configure the plugin.
+Open **Settings → Title Generator** to configure:
 
-| Setting                      | Description                                                                                             | Default                                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **AI Provider**              | Select your preferred AI service (OpenAI, Anthropic, Google Gemini).                            | `OpenAI`                                                                                               |
-| **API Key**     | Your API key for the selected cloud service. Save/Cancel buttons are enabled only when changes are made.                 | (empty)                                                                     |
-| **Model**                    | The specific AI model to use for generation. Models are loaded dynamically from your provider with a searchable dropdown.          | Auto-detected from provider                                                                            |
-| **Initial Prompt**           | The prompt template for the first request. Use `{max_length}` as a placeholder.                         | `Generate a concise, descriptive title for the following text. The title must be a maximum of {max_length} characters.` |
-| **Refinement Prompt**        | The prompt used if the first title is too long. Use `{max_length}` and `{title}`.                       | `The following title is too long. Please shorten it to be under {max_length} characters, while preserving its core meaning: "{title}"` |
-| **Temperature**              | Controls AI creativity (0.0 = deterministic, 1.0 = highly creative).                                    | `0.7`                                                                                                  |
-| **Max Title Length**         | The maximum number of characters for the final title.                                                   | `200`                                                                                                  |
-| **Max Content Length for AI**| The maximum number of characters from the note to send to the AI to save on costs.                      | `2000`                                                                                                 |
-| **Lower-case titles**        | If enabled, converts all titles to lower case.                                                          | `false`                                                                                                |
-| **Remove forbidden chars**   | If enabled, strips characters that are invalid in filenames.                                            | `true`                                                                                                 |
-| **Debug mode**               | Enable detailed console logging for troubleshooting.                                                    | `false`                                                                                                |
+### AI Provider Settings
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **AI Provider** | Select AI service (OpenAI, Anthropic, Google, OpenRouter) | `OpenAI` |
+| **API Key** | Your API key for the selected provider | (empty) |
+| **Model** | AI model to use (auto-detected from provider) | Auto |
+| **Temperature** | AI creativity level (0.0 = deterministic, 1.0 = creative) | `0.7` |
+
+### Title Settings
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Lower-case titles** | Convert all titles to lowercase | `false` |
+| **Remove forbidden chars** | Strip OS-forbidden characters from filenames | `true` |
+| **Max Title Length** | Maximum characters for generated title | `200` |
+| **Max Content Length** | Max characters sent to AI (for cost savings) | `2000` |
+
+### GFM Reformatting Settings
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Enable GFM reformatting** | Transform content to GitHub Flavored Markdown | `false` |
+| **Strip citations** | Remove citation markers [1], [^1], etc. | `false` |
+| **Strip Q&A prefix** | Remove Q:/Question: and A:/Answer: patterns (Perplexity) | `false` |
+| **GFM Prompt** | Custom prompt for GFM reformatting AI request | (default) |
+
+### Gist Auto-Share Settings
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Enable Gist auto-share** | Automatically publish to GitHub Gist after title generation | `false` |
+| **GitHub PAT** | Personal Access Token with `gist` scope | (empty) |
+
+## GFM Reformatting
+
+When enabled, the plugin transforms content using AI:
+
+- **Task Lists**: `- [ ]`, `- [x]`, `[X]` → standardized `- [ ]` format
+- **Tables**: Normalizes separators, alignment markers (`:---`, `:---:`, `---:`)
+- **Code Blocks**: Converts indented code (4+ spaces) to fenced ```` ``` ````
+- **Strikethrough**: `<del>`, `<s>`, `<strike>` → `~~text~~`
+- **URLs**: Auto-links bare URLs with angle brackets
+- **HTML Sanitization**: Removes dangerous tags while preserving safe structural HTML
+
+### Clean Duplicate Detection
+AI-powered detection identifies and removes duplicate content during reformatting, including:
+- Title-to-content duplication
+- Consecutive duplicate paragraphs
+- Near-duplicate variations
 
 ## Dynamic Model Loading
 
-The plugin now automatically detects and loads available models from your configured AI providers:
-
-### How It Works
-
-1. **Auto-Detection**: When you set an API key or server URL, the plugin automatically queries for available models
-2. **Searchable Interface**: Type to filter through available models in a user-friendly dropdown
-3. **Smart Caching**: Models are cached for 1 hour to reduce API calls and improve performance
-4. **Reload Button**: Click the refresh button next to the model dropdown to manually reload models
-5. **Error Handling**: Clear error messages help troubleshoot connection issues
-6. **Fallback Models**: If model loading fails, the plugin falls back to a curated list of popular models
+The plugin auto-detects available models from providers:
 
 ### Model Loading Triggers
-
-- Setting or changing an API key for cloud providers
-- Changing API keys for cloud providers
+- Setting or changing an API key
 - Switching between AI providers
-- Clicking the reload models button
+- Clicking the reload button next to model dropdown
 - Opening settings (if models are older than 1 hour)
 
 ### Example Models (Auto-detected)
-
--   **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4`, etc.
--   **Anthropic**: `claude-sonnet-4-5`, `claude-3-5-sonnet-latest`, `claude-3-opus-20240229`, etc.
--   **Google Gemini**: `gemini-3-flash-preview`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`, etc.
+- **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, etc.
+- **Anthropic**: `claude-sonnet-4-5`, `claude-3-5-sonnet-latest`, etc.
+- **Google Gemini**: `gemini-3-flash-preview`, `gemini-1.5-pro-latest`, etc.
 
 ## Thinking Mode (Google Gemini 3)
 
-For Gemini 3 models, you can enable reasoning/thinking capabilities via the **Thinking Level** setting. This allows the model to process more complex information before generating a title.
-
 | Level | Description |
 | ----- | ----------- |
-| `Off` | Standard generation. |
-| `Low` | Minimal reasoning. |
-| `Medium` | Balanced reasoning. |
-| `High` | Maximum reasoning depth. |
+| `Off` | Standard generation |
+| `Low` | Minimal reasoning |
+| `Medium` | Balanced reasoning |
+| `High` | Maximum reasoning depth |
 
 ## Troubleshooting
 
 ### General Issues
-
--   **Invalid API Key**: Double-check your API key in your provider's dashboard.
--   **Network Errors**: For cloud providers, ensure you have an internet connection.
--   **No Title Generated**: Check the Obsidian developer console (`Ctrl/Cmd + Shift + I`) for any error messages from the plugin.
+- **Invalid API Key**: Verify key in your provider's dashboard
+- **Network Errors**: Ensure internet connection for cloud providers
+- **No Title Generated**: Check Obsidian console (`Ctrl/Cmd + Shift + I`)
 
 ### Model Loading Issues
-
--   **Models Not Loading**: Click the reload button (🔄) next to the model dropdown to manually refresh the model list.
--   **"Loading models..." Stuck**: Check your internet connection and API key. The plugin has a 10-second timeout for model queries.
--   **Error Messages in Settings**: Hover over the model dropdown description to see detailed error messages and timestamps.
--   **Fallback Models**: If model loading fails, the plugin will show a curated list of popular models as fallback.
-
-### Provider-Specific Issues
-
--   **OpenAI**: Ensure your API key has the correct permissions and billing is set up.
--   **Anthropic**: API key must be from the Anthropic Console, not Claude.ai.
--   **Google Gemini**: Use API key from Google AI Studio, not Google Cloud Console.
+- **Models Not Loading**: Click reload button (🔄) next to model dropdown
+- **"Loading models..." Stuck**: Check connection and API key
+- **Fallback Models**: Curated list shown if auto-detection fails
 
 ## License
 
