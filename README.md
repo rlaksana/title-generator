@@ -57,6 +57,13 @@ Right-click a note in the file explorer:
 - **"Rename title & (optional) Gist share"** — Process single note
 - **"Rename N titles & (optional) Gist share"** — Batch process multiple notes
 
+### First-Time Setup
+When you run a command for the first time (or keys are missing), a popup will appear asking for your API keys:
+- **AI API Key** — Required for all commands. Choose your provider and enter the key.
+- **GitHub PAT** — Required only for Paste & Share to Gist command.
+
+No need to navigate to Settings — keys are entered directly in the popup and saved automatically.
+
 ## Settings
 
 Open **Settings → Title Generator** to configure:
