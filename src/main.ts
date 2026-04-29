@@ -86,35 +86,27 @@ export default class TitleGeneratorPlugin extends Plugin {
               new Notice('Clipboard is empty.');
               return;
             }
-            // Check if active tab is already an empty tab — if so, reuse it
-            const currentLeaf = this.app.workspace.activeLeaf;
-            const isEmptyTab = currentLeaf?.view && !(currentLeaf.view as any).file;
-            if (!isEmptyTab) {
-              await (this.app as any).commands.executeCommandById('workspace:new-tab');
-            }
+            // Open new tab + new note via command, then get the leaf
+            await (this.app as any).commands.executeCommandById('workspace:new-tab');
             await (this.app as any).commands.executeCommandById('notes:new');
-            // Wait for the new note to be fully ready (file created + editor set up)
-            let editor: any = null;
+            // Wait for note to be created and get the active file
+            let activeFile: TFile | null = null;
             let attempts = 0;
-            while (attempts < 10) {
-              const leaf = this.app.workspace.getMostRecentLeaf();
-              if (leaf?.view) {
-                editor = (leaf.view as any).editor;
-                if (editor) break;
-              }
+            while (attempts < 20) {
+              activeFile = this.app.workspace.getActiveFile();
+              if (activeFile) break;
               await new Promise(resolve => setTimeout(resolve, 100));
               attempts++;
             }
-            if (!editor) {
-              new Notice('Failed to open new note.');
+            if (!activeFile) {
+              new Notice('Failed to create new note.');
               return;
             }
-            editor.replaceSelection(clipboardText);
-            // Get the active file and run through the pipeline
-            const activeFile = this.app.workspace.getActiveFile();
-            if (!activeFile) {
-              new Notice('No active file found.');
-              return;
+            // Replace content with clipboard
+            const leaf = this.app.workspace.getMostRecentLeaf();
+            if (leaf?.view) {
+              const editor = (leaf.view as any).editor as Editor | null;
+              if (editor) editor.replaceSelection(clipboardText);
             }
             await this.processSingleFile(activeFile, clipboardText);
           } catch (error) {
