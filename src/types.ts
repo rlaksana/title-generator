@@ -310,6 +310,7 @@ export interface TitleGeneratorSettings {
   // GFM Reformatting Settings
   enableGfmReformatting: boolean;
   stripCitations: boolean;
+  cleanQAPrefix: boolean;
   gfmPrompt: string;
 
   // Gist Auto-Share Settings

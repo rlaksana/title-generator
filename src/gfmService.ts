@@ -38,15 +38,18 @@ export class GfmService {
 
   /**
    * Post-transform: ensure GFM compliance after AI processing
+   * @param cleanQAPrefix - if true, also strip Q&A prefix patterns from output
    */
-  postTransform(content: string): string {
+  postTransform(content: string, cleanQAPrefix: boolean = true): string {
     let result = content;
 
     // Strip leaked instructions from AI output
     result = this.stripInstructions(result);
 
-    // Strip Q&A prefix from AI output
-    result = this.stripQaPrefix(result);
+    // Strip Q&A prefix from AI output (only if enabled)
+    if (cleanQAPrefix) {
+      result = this.stripQaPrefix(result);
+    }
 
     // Convert remaining indented code to fenced code blocks
     result = this.transformCodeBlocks(result);

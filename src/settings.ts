@@ -81,6 +81,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   // GFM Reformatting Settings
   enableGfmReformatting: false,
   stripCitations: true,
+  cleanQAPrefix: false,
   gfmPrompt:
     'You are a GitHub Flavored Markdown (GFM) formatter. Transform the following content to be fully GFM-compliant:\n' +
     '- Use fenced code blocks (```) with language hints instead of indented code\n' +
@@ -287,6 +288,18 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.stripCitations)
           .onChange(async (value) => {
             this.plugin.settings.stripCitations = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Strip Q&A prefix from AI output')
+      .setDesc('Remove Q&A prefix patterns (Q: / Question:) from content. Useful for Perplexity-generated content.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.cleanQAPrefix)
+          .onChange(async (value) => {
+            this.plugin.settings.cleanQAPrefix = value;
             await this.plugin.saveSettings();
           });
       });

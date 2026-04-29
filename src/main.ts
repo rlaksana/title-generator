@@ -122,9 +122,61 @@ export default class TitleGeneratorPlugin extends Plugin {
               const editor = (leaf.view as any).editor as Editor | null;
               if (editor) editor.replaceSelection(clipboardText);
             }
-            await this.processSingleFile(activeFile, clipboardText);
+            await this.processSingleFile(activeFile, clipboardText, { forceGfm: true, forceGist: true });
           } catch (error) {
             new Notice(`Failed to paste and share: ${(error as Error).message}`);
+          }
+        },
+      });
+
+      this.addCommand({
+        id: 'paste-to-note',
+        name: 'Paste to new note',
+        callback: async () => {
+          try {
+            const clipboardText = await navigator.clipboard.readText();
+            if (!clipboardText.trim()) {
+              new Notice('Clipboard is empty.');
+              return;
+            }
+            // Check if current tab is empty (no MarkdownView = "No file is open")
+            // If empty, reuse the tab. If not empty, create a new tab.
+            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            let leaf: WorkspaceLeaf;
+            if (!activeView) {
+              // Empty tab - use the current leaf
+              leaf = this.app.workspace.getLeaf(false)!;
+            } else {
+              // Has content - create a new tab
+              leaf = this.app.workspace.getLeaf('tab');
+            }
+            // Create a new untitled note and open it in the leaf
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `Paste-${timestamp}.md`;
+            const newFile = await this.app.vault.create(filename, '');
+            await leaf.openFile(newFile);
+            // Wait for the file to be available
+            let activeFile: TFile | null = null;
+            let attempts = 0;
+            while (attempts < 20) {
+              activeFile = this.app.workspace.getActiveFile();
+              if (activeFile) break;
+              await new Promise(resolve => setTimeout(resolve, 100));
+              attempts++;
+            }
+            if (!activeFile) {
+              new Notice('Failed to create new note.');
+              return;
+            }
+            // Replace content with clipboard
+            if (leaf.view) {
+              const editor = (leaf.view as any).editor as Editor | null;
+              if (editor) editor.replaceSelection(clipboardText);
+            }
+            // Normal flow - no forced GFM or Gist
+            await this.processSingleFile(activeFile, clipboardText);
+          } catch (error) {
+            new Notice(`Failed to paste to note: ${(error as Error).message}`);
           }
         },
       });
@@ -319,7 +371,8 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   private async processSingleFile(
     file: TFile,
-    content: string
+    content: string,
+    options?: { forceGfm?: boolean; forceGist?: boolean }
   ): Promise<FileOperationResult> {
     if (!content.trim()) {
       const error = this.errorHandler.createGenerationError(
@@ -346,8 +399,8 @@ export default class TitleGeneratorPlugin extends Plugin {
 
         let finalContent = content;
 
-        // Reformat body to GFM if enabled
-        if (this.settings.enableGfmReformatting) {
+        // Reformat body to GFM if enabled (or forced by command)
+        if (this.settings.enableGfmReformatting || options?.forceGfm) {
           statusBarItem.setText('Reformatting body for Gist...');
           const preTransformed = this.gfmService.preTransform(finalContent, this.settings.stripCitations);
           const reformatted = await this.aiService.reformatForGfm(
@@ -356,7 +409,7 @@ export default class TitleGeneratorPlugin extends Plugin {
             sanitizedTitle
           );
           if (reformatted) {
-            finalContent = this.gfmService.postTransform(reformatted);
+            finalContent = this.gfmService.postTransform(reformatted, this.settings.cleanQAPrefix);
           }
         }
 
@@ -383,8 +436,8 @@ export default class TitleGeneratorPlugin extends Plugin {
           }
 
           // Gist auto-share after rename
-          const didGfmReformat = this.settings.enableGfmReformatting && finalContent !== content;
-          const didGistShare = this.settings.enableGistAutoShare && this.settings.githubPat;
+          const didGfmReformat = (this.settings.enableGfmReformatting || options?.forceGfm) && finalContent !== content;
+          const didGistShare = (this.settings.enableGistAutoShare || options?.forceGist) && this.settings.githubPat;
           let gistUrlForNotice: string | undefined;
 
           if (didGistShare) {
