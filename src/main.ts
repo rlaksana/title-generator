@@ -4,6 +4,7 @@ import {
   MarkdownView,
   Notice,
   Plugin,
+  Setting,
   TFile,
   WorkspaceLeaf,
   normalizePath,
@@ -83,6 +84,10 @@ export default class TitleGeneratorPlugin extends Plugin {
         name: 'Paste clipboard & share to Gist',
         callback: async () => {
           try {
+            // Check for required keys (needs Gist)
+            const ready = await this.checkAndPromptForKeys(true);
+            if (!ready) return;
+
             const clipboardText = await navigator.clipboard.readText();
             if (!clipboardText.trim()) {
               new Notice('Clipboard is empty.');
@@ -134,6 +139,10 @@ export default class TitleGeneratorPlugin extends Plugin {
         name: 'Paste to new note',
         callback: async () => {
           try {
+            // Check for required keys (AI key only, no Gist needed)
+            const ready = await this.checkAndPromptForKeys(false);
+            if (!ready) return;
+
             const clipboardText = await navigator.clipboard.readText();
             if (!clipboardText.trim()) {
               new Notice('Clipboard is empty.');
@@ -287,6 +296,10 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   private async generateTitleForEditor(editor: Editor): Promise<void> {
     try {
+      // Check for required keys
+      const ready = await this.checkAndPromptForKeys(false);
+      if (!ready) return;
+
       const activeFile = this.app.workspace.getActiveFile();
       if (!activeFile) {
         this.errorHandler.handleError(new Error('No active file found'), {
@@ -305,6 +318,10 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   private async generateTitleForFile(file: TFile): Promise<void> {
     try {
+      // Check for required keys
+      const ready = await this.checkAndPromptForKeys(false);
+      if (!ready) return;
+
       const content = await this.app.vault.cachedRead(file);
       await this.processSingleFile(file, content);
     } catch (error) {
@@ -316,6 +333,10 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   private async generateTitlesForMultipleFiles(files: TFile[]): Promise<void> {
+    // Check for required keys
+    const ready = await this.checkAndPromptForKeys(false);
+    if (!ready) return;
+
     const total = files.length;
     const statusBarItem = this.addStatusBarItem();
     const progress: BatchOperationProgress = {
@@ -591,5 +612,194 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
     // No frontmatter exists, add at top
     return '---\n' + frontmatter + '---\n' + content;
+  }
+
+  /**
+   * Check if required API keys are present, prompt user if missing
+   * @returns Promise<boolean> true if ready to proceed, false if cancelled/prompted
+   */
+  private async checkAndPromptForKeys(needsGist: boolean = false): Promise<boolean> {
+    const aiKeyMissing = !this.settings.openAiApiKey &&
+                         !this.settings.anthropicApiKey &&
+                         !this.settings.googleApiKey &&
+                         !this.settings.openRouterApiKey;
+    const gistMissing = needsGist && !this.settings.githubPat;
+
+    if (!aiKeyMissing && !gistMissing) {
+      return true; // All keys present
+    }
+
+    return new Promise((resolve) => {
+      const modal = new ApiKeyPromptModal(this.app, this, { needsGist }, async (success) => {
+        if (success) {
+          await this.saveSettings();
+          // Re-check after save
+          const aiKeyNow = this.settings.openAiApiKey ||
+                           this.settings.anthropicApiKey ||
+                           this.settings.googleApiKey ||
+                           this.settings.openRouterApiKey;
+          const gistOkNow = !needsGist || !!this.settings.githubPat;
+          resolve(!!aiKeyNow && gistOkNow);
+        } else {
+          resolve(false);
+        }
+      });
+      modal.open();
+    });
+  }
+}
+
+/**
+ * Modal for prompting user to enter API keys when missing
+ */
+class ApiKeyPromptModal extends Modal {
+  private plugin: TitleGeneratorPlugin;
+  private needsGist: boolean;
+  private onComplete: (success: boolean) => void;
+  private updateInputVisibility: () => void = () => {};
+
+  constructor(app: App, plugin: TitleGeneratorPlugin, options: { needsGist: boolean }, onComplete: (success: boolean) => void) {
+    super(app);
+    this.plugin = plugin;
+    this.needsGist = options.needsGist;
+    this.onComplete = onComplete;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.setText('API Keys Required');
+
+    // AI Provider selection
+    new Setting(contentEl)
+      .setName('AI Provider')
+      .setDesc('Select your AI provider')
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption('openai', 'OpenAI')
+          .addOption('anthropic', 'Anthropic')
+          .addOption('google', 'Google Gemini')
+          .addOption('openrouter', 'OpenRouter')
+          .setValue(this.plugin.settings.aiProvider)
+          .onChange((value) => {
+            this.plugin.settings.aiProvider = value as any;
+            this.updateInputVisibility();
+          });
+      });
+
+    // OpenAI API Key
+    const openaiSetting = new Setting(contentEl)
+      .setName('OpenAI API Key')
+      .setDesc('Required for OpenAI models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-...';
+        text.setValue(this.plugin.settings.openAiApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.openAiApiKey = value;
+        });
+      });
+
+    // Anthropic API Key
+    const anthropicSetting = new Setting(contentEl)
+      .setName('Anthropic API Key')
+      .setDesc('Required for Claude models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-ant-...';
+        text.setValue(this.plugin.settings.anthropicApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.anthropicApiKey = value;
+        });
+      });
+
+    // Google API Key
+    const googleSetting = new Setting(contentEl)
+      .setName('Google API Key')
+      .setDesc('Required for Gemini models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'AI...';
+        text.setValue(this.plugin.settings.googleApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.googleApiKey = value;
+        });
+      });
+
+    // OpenRouter API Key
+    const openrouterSetting = new Setting(contentEl)
+      .setName('OpenRouter API Key')
+      .setDesc('Required for OpenRouter models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-...';
+        text.setValue(this.plugin.settings.openRouterApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.openRouterApiKey = value;
+        });
+      });
+
+    // GitHub PAT (only if needed)
+    let gistSetting: Setting | null = null;
+    if (this.needsGist) {
+      gistSetting = new Setting(contentEl)
+        .setName('GitHub Personal Access Token')
+        .setDesc('Required for Gist publishing')
+        .addText((text) => {
+          text.inputEl.type = 'password';
+          text.inputEl.placeholder = 'ghp_...';
+          text.setValue(this.plugin.settings.githubPat);
+          text.onChange((value) => {
+            this.plugin.settings.githubPat = value;
+          });
+        });
+    }
+
+    // Helper to show/hide based on provider
+    this.updateInputVisibility = () => {
+      const provider = this.plugin.settings.aiProvider;
+      openaiSetting.settingEl.style.display = provider === 'openai' ? '' : 'none';
+      anthropicSetting.settingEl.style.display = provider === 'anthropic' ? '' : 'none';
+      googleSetting.settingEl.style.display = provider === 'google' ? '' : 'none';
+      openrouterSetting.settingEl.style.display = provider === 'openrouter' ? '' : 'none';
+    };
+    this.updateInputVisibility();
+
+    // Buttons
+    new Setting(contentEl)
+      .addButton((btn) => {
+        btn.setButtonText('Cancel');
+        btn.onClick(() => {
+          this.close();
+          this.onComplete(false);
+        });
+      })
+      .addButton((btn) => {
+        btn.setButtonText('Save & Continue');
+        btn.setCta();
+        btn.onClick(() => {
+          // Validate at least one AI key is set
+          const hasAiKey = !!(
+            this.plugin.settings.openAiApiKey ||
+            this.plugin.settings.anthropicApiKey ||
+            this.plugin.settings.googleApiKey ||
+            this.plugin.settings.openRouterApiKey
+          );
+          if (!hasAiKey) {
+            new Notice('Please enter at least one AI API key');
+            return;
+          }
+          if (this.needsGist && !this.plugin.settings.githubPat) {
+            new Notice('Please enter a GitHub Personal Access Token');
+            return;
+          }
+          this.close();
+          this.onComplete(true);
+        });
+      });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }
