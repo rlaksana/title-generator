@@ -86,11 +86,26 @@ export default class TitleGeneratorPlugin extends Plugin {
               new Notice('Clipboard is empty.');
               return;
             }
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filename = `Paste-${timestamp}.md`;
-            const newFile = await this.app.vault.create(filename, clipboardText);
-            await this.processSingleFile(newFile, clipboardText);
-            this.app.workspace.getLeaf().openFile(newFile);
+            // Open new tab, then create new untitled note in that tab
+            await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            await (this.app as any).commands.executeCommandById('notes:new');
+            // Wait for the new note to be ready
+            await new Promise(resolve => setTimeout(resolve, 150));
+            const activeLeaf = (this.app.workspace as any).getActiveLeaf();
+            if (!activeLeaf?.view?.editor) {
+              new Notice('Failed to open new note.');
+              return;
+            }
+            // Paste clipboard into the new note
+            const editor = activeLeaf.view.editor;
+            editor.replaceSelection(clipboardText);
+            // Get the active file and run through the pipeline
+            const activeFile = this.app.workspace.getActiveFile();
+            if (!activeFile) {
+              new Notice('No active file found.');
+              return;
+            }
+            await this.processSingleFile(activeFile, clipboardText);
           } catch (error) {
             new Notice(`Failed to paste and share: ${(error as Error).message}`);
           }
