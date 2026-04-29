@@ -91,13 +91,17 @@ export default class TitleGeneratorPlugin extends Plugin {
             await (this.app as any).commands.executeCommandById('notes:new');
             // Wait for the new note to be ready
             await new Promise(resolve => setTimeout(resolve, 150));
-            const activeLeaf = (this.app.workspace as any).getActiveLeaf();
-            if (!activeLeaf?.view?.editor) {
+            const activeLeaf = this.app.workspace.activeLeaf;
+            if (!activeLeaf?.view) {
               new Notice('Failed to open new note.');
               return;
             }
-            // Paste clipboard into the new note
-            const editor = activeLeaf.view.editor;
+            // Cast to EditorView since we know it's a markdown editor
+            const editor = (activeLeaf.view as any).editor;
+            if (!editor) {
+              new Notice('Failed to open new note.');
+              return;
+            }
             editor.replaceSelection(clipboardText);
             // Get the active file and run through the pipeline
             const activeFile = this.app.workspace.getActiveFile();
