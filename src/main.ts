@@ -5,6 +5,7 @@ import {
   Notice,
   Plugin,
   TFile,
+  WorkspaceLeaf,
   normalizePath,
   Modal,
 } from 'obsidian';
@@ -88,13 +89,22 @@ export default class TitleGeneratorPlugin extends Plugin {
               return;
             }
             // Check if current tab is empty (no MarkdownView = "No file is open")
-            // If empty, reuse the tab for notes:new. If not empty, open a new tab first.
+            // If empty, reuse the tab. If not empty, create a new tab.
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-            if (activeView) {
-              await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            let leaf: WorkspaceLeaf;
+            if (!activeView) {
+              // Empty tab - use the current leaf
+              leaf = this.app.workspace.getLeaf(false)!;
+            } else {
+              // Has content - create a new tab
+              leaf = this.app.workspace.getLeaf('tab');
             }
-            await (this.app as any).commands.executeCommandById('notes:new');
-            // Wait for note to be created and get the active file
+            // Create a new untitled note and open it in the leaf
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `Paste-${timestamp}.md`;
+            const newFile = await this.app.vault.create(filename, '');
+            await leaf.openFile(newFile);
+            // Wait for the file to be available
             let activeFile: TFile | null = null;
             let attempts = 0;
             while (attempts < 20) {
@@ -108,8 +118,7 @@ export default class TitleGeneratorPlugin extends Plugin {
               return;
             }
             // Replace content with clipboard
-            const leaf = this.app.workspace.getMostRecentLeaf();
-            if (leaf?.view) {
+            if (leaf.view) {
               const editor = (leaf.view as any).editor as Editor | null;
               if (editor) editor.replaceSelection(clipboardText);
             }
