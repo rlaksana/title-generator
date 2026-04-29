@@ -1,6 +1,7 @@
 import {
   App,
   Editor,
+  MarkdownView,
   Notice,
   Plugin,
   TFile,
@@ -86,8 +87,12 @@ export default class TitleGeneratorPlugin extends Plugin {
               new Notice('Clipboard is empty.');
               return;
             }
-            // Open new tab + new note via command, then get the leaf
-            await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            // Check if current tab is empty (no MarkdownView = "No file is open")
+            // If empty, reuse the tab for notes:new. If not empty, open a new tab first.
+            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (activeView) {
+              await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            }
             await (this.app as any).commands.executeCommandById('notes:new');
             // Wait for note to be created and get the active file
             let activeFile: TFile | null = null;
