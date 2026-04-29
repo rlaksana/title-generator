@@ -86,8 +86,12 @@ export default class TitleGeneratorPlugin extends Plugin {
               new Notice('Clipboard is empty.');
               return;
             }
-            // Open new tab, then create new untitled note in that tab
-            await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            // Check if active tab is already an empty tab — if so, reuse it
+            const currentLeaf = this.app.workspace.activeLeaf;
+            const isEmptyTab = currentLeaf?.view && !(currentLeaf.view as any).file;
+            if (!isEmptyTab) {
+              await (this.app as any).commands.executeCommandById('workspace:new-tab');
+            }
             await (this.app as any).commands.executeCommandById('notes:new');
             // Wait for the new note to be ready
             await new Promise(resolve => setTimeout(resolve, 150));
