@@ -76,6 +76,26 @@ export default class TitleGeneratorPlugin extends Plugin {
         },
       });
 
+      this.addCommand({
+        id: 'paste-and-share-to-gist',
+        name: 'Paste clipboard & share to Gist',
+        callback: async () => {
+          try {
+            const clipboardText = await navigator.clipboard.readText();
+            if (!clipboardText.trim()) {
+              new Notice('Clipboard is empty.');
+              return;
+            }
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `Paste-${timestamp}.md`;
+            const newFile = await this.app.vault.create(filename, clipboardText);
+            await this.processSingleFile(newFile, clipboardText);
+            this.app.workspace.getLeaf().openFile(newFile);
+          } catch (error) {
+            new Notice(`Failed to paste and share: ${(error as Error).message}`);
+          }
+        },
+      });
 
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
