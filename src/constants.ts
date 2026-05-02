@@ -3,7 +3,7 @@
  * Centralized location for all hardcoded values
  */
 
-export const PLUGIN_NAME = 'Title Generator';
+export const PLUGIN_NAME = 'Forge';
 export const PLUGIN_ID = 'title-generator';
 
 // API Configuration

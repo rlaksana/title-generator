@@ -1,4 +1,4 @@
-# Title Generator v3.0.95
+# Forge v3.0.95
 
 > **Latest Update**: Three commands now available — generate title from note, paste to new note, or paste & share to Gist. Auto version bump enabled.
 
@@ -66,7 +66,7 @@ No need to navigate to Settings — keys are entered directly in the popup and s
 
 ## Settings
 
-Open **Settings → Title Generator** to configure:
+Open **Settings → Forge** to configure:
 
 ### AI Provider Settings
 | Setting | Description | Default |

@@ -114,7 +114,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Title Generator Settings' });
+    containerEl.createEl('h2', { text: 'Forge Settings' });
 
     /* --- General Settings --- */
     containerEl.createEl('h3', { text: 'General' });
