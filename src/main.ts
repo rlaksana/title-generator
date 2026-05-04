@@ -690,10 +690,12 @@ export default class TitleGeneratorPlugin extends Plugin {
       return { fm: new Map(), body: content, hasFrontmatter: false };
     }
     const afterOpening = content.slice(3); // skip ---
-    const closingIndex = afterOpening.indexOf('\n---');
-    if (closingIndex === -1) {
+    // Find closing --- that's on its own line (not inside body content)
+    const closingMatch = afterOpening.match(/\n---/);
+    if (!closingMatch) {
       return { fm: new Map(), body: content, hasFrontmatter: false };
     }
+    const closingIndex = closingMatch.index!;
     const fmContent = afterOpening.slice(0, closingIndex);
     const body = afterOpening.slice(closingIndex + 4); // skip \n---
     const fm = new Map<string, string>();
@@ -735,10 +737,19 @@ export default class TitleGeneratorPlugin extends Plugin {
     if (!hasFrontmatter) {
       return this.serializeFrontmatter(fm, body);
     }
-    // Reconstruct with same structure (first \n after opening ---)
+    // Build yamlPrefix WITHOUT existing gist fields (they're replaced via fm.set)
     const afterOpening = content.slice(3);
-    const closingIndex = afterOpening.indexOf('\n---');
-    const yamlPrefix = '---\n' + afterOpening.slice(0, closingIndex);
+    const closingMatch = afterOpening.match(/\n---/);
+    if (!closingMatch) {
+      return this.serializeFrontmatter(fm, body);
+    }
+    const closingIndex = closingMatch.index!;
+    const existingFmLines = afterOpening.slice(0, closingIndex).split('\n');
+    const nonGistLines = existingFmLines.filter(line => {
+      const key = line.split(':')[0]?.trim();
+      return key && !['gist_id', 'gist_url', 'gist_filename'].includes(key);
+    });
+    const yamlPrefix = '---\n' + nonGistLines.join('\n');
     return this.serializeFrontmatter(fm, body, yamlPrefix);
   }
 
