@@ -493,7 +493,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
             if (gistResult.success) {
               // Add frontmatter with gist_id, gist_url, and gist_filename
-              const frontmatterContent = this.addGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!, sanitizedTitle + ext);
+              const frontmatterContent = this.updateGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!, sanitizedTitle + ext);
               await this.app.vault.modify(
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 frontmatterContent
@@ -654,13 +654,7 @@ export default class TitleGeneratorPlugin extends Plugin {
       }
 
       // Extract raw markdown body (remove frontmatter for upload)
-      let uploadContent = content;
-      if (content.startsWith('---')) {
-        const endOfFrontmatter = content.indexOf('---', 3);
-        if (endOfFrontmatter !== -1 && endOfFrontmatter < 50) {
-          uploadContent = content.slice(endOfFrontmatter + 3).trim();
-        }
-      }
+      const { body: uploadContent } = this.parseFrontmatter(content);
 
       // Determine old and new filename
       const localBasename = file.basename + '.' + file.extension;
@@ -672,7 +666,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       if (gistResult.success) {
         // Update frontmatter with new gist info
-        const updatedFrontmatter = this.addGistFrontmatter(
+        const updatedFrontmatter = this.updateGistFrontmatter(
           content,
           gistResult.gistId!,
           gistResult.gistUrl!,
@@ -691,20 +685,61 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
   }
 
-  private addGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
-    const frontmatter = `gist_id: "${gistId}"
-gist_url: "${gistUrl}"
-gist_filename: "${gistFilename}"
-`;
-    if (content.startsWith('---')) {
-      // Insert after opening --- and frontmatter block
-      const endOfFrontmatter = content.indexOf('---', 3);
-      if (endOfFrontmatter !== -1) {
-        return content.slice(0, endOfFrontmatter + 3) + '\n' + frontmatter + content.slice(endOfFrontmatter + 3);
+  private parseFrontmatter(content: string): { fm: Map<string, string>; body: string; hasFrontmatter: boolean } {
+    if (!content.startsWith('---')) {
+      return { fm: new Map(), body: content, hasFrontmatter: false };
+    }
+    const afterOpening = content.slice(3); // skip ---
+    const closingIndex = afterOpening.indexOf('\n---');
+    if (closingIndex === -1) {
+      return { fm: new Map(), body: content, hasFrontmatter: false };
+    }
+    const fmContent = afterOpening.slice(0, closingIndex);
+    const body = afterOpening.slice(closingIndex + 4); // skip \n---
+    const fm = new Map<string, string>();
+    for (const line of fmContent.split('\n')) {
+      const colonIdx = line.indexOf(':');
+      if (colonIdx > 0) {
+        const key = line.slice(0, colonIdx).trim();
+        let val = line.slice(colonIdx + 1).trim();
+        // Strip surrounding quotes
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        fm.set(key, val);
       }
     }
-    // No frontmatter exists, add at top
-    return '---\n' + frontmatter + '---\n' + content;
+    return { fm, body, hasFrontmatter: true };
+  }
+
+  private serializeFrontmatter(fm: Map<string, string>, body: string, existingYamlPrefix: string = ''): string {
+    // Build frontmatter string preserving insertion order
+    const lines: string[] = [];
+    fm.forEach((val, key) => {
+      // Quote values that need it (contain special chars)
+      const needsQuotes = val.includes(':') || val.includes('#') || val.includes('"') || val.includes("'") || val.startsWith(' ') || val.endsWith(' ');
+      lines.push(`${key}: ${needsQuotes ? `"${val.replace(/"/g, '\\"')}"` : val}`);
+    });
+    const fmStr = lines.join('\n');
+    if (existingYamlPrefix !== '') {
+      return `${existingYamlPrefix}\n${fmStr}\n---\n${body}`;
+    }
+    return `---\n${fmStr}\n---\n${body}`;
+  }
+
+  private updateGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
+    const { fm, body, hasFrontmatter } = this.parseFrontmatter(content);
+    fm.set('gist_id', gistId);
+    fm.set('gist_url', gistUrl);
+    fm.set('gist_filename', gistFilename);
+    if (!hasFrontmatter) {
+      return this.serializeFrontmatter(fm, body);
+    }
+    // Reconstruct with same structure (first \n after opening ---)
+    const afterOpening = content.slice(3);
+    const closingIndex = afterOpening.indexOf('\n---');
+    const yamlPrefix = '---\n' + afterOpening.slice(0, closingIndex);
+    return this.serializeFrontmatter(fm, body, yamlPrefix);
   }
 
   /**
