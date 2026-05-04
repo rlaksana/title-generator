@@ -159,6 +159,68 @@ export class GistService {
   }
 
   /**
+   * Update an existing Gist in-place via the GitHub API (PATCH)
+   */
+  private async updateGist(
+    content: string,
+    newFilename: string,
+    oldFilename: string,
+    gistId: string
+  ): Promise<GistPublishResult & { status?: number }> {
+    const settings = this.getSettings();
+
+    try {
+      const response = await requestUrl({
+        url: `https://api.github.com/gists/${gistId}`,
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${settings.githubPat}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: newFilename,
+          files: {
+            [oldFilename]: { filename: newFilename, content },
+          },
+        }),
+      });
+
+      if (response.status === 200) {
+        const data = response.json;
+        return {
+          success: true,
+          gistId: data.id,
+          gistUrl: data.html_url,
+          status: response.status,
+        };
+      }
+
+      if (response.status === 401) {
+        new Notice('GitHub authentication failed. Please check your PAT.', 7000);
+        return {
+          success: false,
+          error: 'Authentication failed. Please check your GitHub PAT.',
+          status: response.status,
+        };
+      }
+
+      return {
+        success: false,
+        error: `Gist update failed (${response.status}): ${response.text}`,
+        status: response.status,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: `Failed to update Gist: ${errorMessage}`,
+      };
+    }
+  }
+
+  /**
    * Delay helper for retry logic
    */
   private delay(ms: number): Promise<void> {
