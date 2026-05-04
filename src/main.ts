@@ -203,26 +203,6 @@ export default class TitleGeneratorPlugin extends Plugin {
         },
       });
 
-      this.addCommand({
-        id: 'normalize-gist-frontmatter',
-        name: 'Normalize Gist Frontmatter',
-        editorCallback: async (editor: Editor) => {
-          const file = this.app.workspace.getActiveFile();
-          if (!file) {
-            new Notice('No active file found.');
-            return;
-          }
-          const content = await this.app.vault.cachedRead(file);
-          const result = this.normalizeFrontmatter(content);
-          if (result.normalized) {
-            await this.app.vault.modify(file, result.content);
-            new Notice(`Normalized ${result.blockCount} frontmatter blocks into 1.`);
-          } else {
-            new Notice('No duplicate frontmatter found.');
-          }
-        },
-      });
-
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
           if (file instanceof TFile && file.extension === 'md') {
@@ -237,21 +217,6 @@ export default class TitleGeneratorPlugin extends Plugin {
                 .setTitle('Update Gist')
                 .setIcon('lucide-refresh-cw')
                 .onClick(() => this.updateGistForFile(file))
-            );
-            menu.addItem((item) =>
-              item
-                .setTitle('Normalize Gist Frontmatter')
-                .setIcon('lucide-align-center')
-                .onClick(async () => {
-                  const content = await this.app.vault.cachedRead(file);
-                  const result = this.normalizeFrontmatter(content);
-                  if (result.normalized) {
-                    await this.app.vault.modify(file, result.content);
-                    new Notice(`Normalized ${result.blockCount} frontmatter blocks into 1.`);
-                  } else {
-                    new Notice('No duplicate frontmatter found.');
-                  }
-                })
             );
           }
         })
@@ -765,7 +730,14 @@ export default class TitleGeneratorPlugin extends Plugin {
   }
 
   private updateGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
-    const { fm, body, hasFrontmatter } = this.parseFrontmatter(content);
+    // Auto-normalize if multiple frontmatter blocks detected (corrupted state)
+    const blockCount = (content.match(/---\n[\s\S]*?\n---/g) || []).length;
+    let workingContent = content;
+    if (blockCount > 1) {
+      workingContent = this.normalizeFrontmatter(content).content;
+    }
+
+    const { fm, body, hasFrontmatter } = this.parseFrontmatter(workingContent);
     fm.set('gist_id', gistId);
     fm.set('gist_url', gistUrl);
     fm.set('gist_filename', gistFilename);
@@ -773,7 +745,7 @@ export default class TitleGeneratorPlugin extends Plugin {
       return this.serializeFrontmatter(fm, body);
     }
     // Build yamlPrefix WITHOUT existing gist fields (they're replaced via fm.set)
-    const afterOpening = content.slice(3);
+    const afterOpening = workingContent.slice(3);
     const closingMatch = afterOpening.match(/\n---/);
     if (!closingMatch) {
       return this.serializeFrontmatter(fm, body);
