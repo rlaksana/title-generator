@@ -174,29 +174,6 @@ export class GistService {
     };
   }
 
-  /**
-   * Delete a Gist by ID. Returns true on success.
-   */
-  private async deleteGist(gistId: string): Promise<boolean> {
-    const settings = this.getSettings();
-
-    try {
-      const response = await requestUrl({
-        url: `https://api.github.com/gists/${gistId}`,
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${settings.githubPat}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      });
-
-      return response.status === 204;
-    } catch (error) {
-      console.error(`Failed to delete Gist ${gistId}:`, error);
-      return false;
-    }
-  }
 
   /**
    * Create a new Gist via the GitHub API
