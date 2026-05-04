@@ -190,6 +190,19 @@ export default class TitleGeneratorPlugin extends Plugin {
         },
       });
 
+      this.addCommand({
+        id: 'update-gist',
+        name: 'Update Gist',
+        editorCallback: async (editor: Editor) => {
+          const file = this.app.workspace.getActiveFile();
+          if (!file) {
+            new Notice('No active file found.');
+            return;
+          }
+          await this.updateGistForFile(file);
+        },
+      });
+
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
           if (file instanceof TFile && file.extension === 'md') {
@@ -198,6 +211,12 @@ export default class TitleGeneratorPlugin extends Plugin {
                 .setTitle('Rename title and share to Gist')
                 .setIcon('lucide-edit-3')
                 .onClick(() => this.generateTitleForFile(file))
+            );
+            menu.addItem((item) =>
+              item
+                .setTitle('Update Gist')
+                .setIcon('lucide-refresh-cw')
+                .onClick(() => this.updateGistForFile(file))
             );
           }
         })
@@ -611,6 +630,61 @@ export default class TitleGeneratorPlugin extends Plugin {
         file: file.path,
       });
       new Notice('Failed to copy title and Gist link.');
+    }
+  }
+
+  /**
+   * Update an existing Gist with local file content.
+   * No AI title generation, no rename, no GFM transformation.
+   */
+  private async updateGistForFile(file: TFile): Promise<void> {
+    try {
+      const content = await this.app.vault.cachedRead(file);
+      const gistId = this.getGistIdFromFrontmatter(content);
+      const gistFilename = this.getGistFilenameFromFrontmatter(content);
+
+      if (!gistId) {
+        new Notice('No Gist found. Use "Rename & Share to Gist" first.');
+        return;
+      }
+
+      const statusBarItem = this.addStatusBarItem();
+      statusBarItem.setText('Updating Gist...');
+
+      // Extract raw markdown body (remove frontmatter for upload)
+      let uploadContent = content;
+      if (content.startsWith('---')) {
+        const endOfFrontmatter = content.indexOf('---', 3);
+        if (endOfFrontmatter !== -1 && endOfFrontmatter < 50) {
+          uploadContent = content.slice(endOfFrontmatter + 3).trim();
+        }
+      }
+
+      // Determine old and new filename
+      const localBasename = file.basename + '.' + file.extension;
+      const oldFilename = gistFilename || localBasename;
+      const newFilename = localBasename;
+
+      // PATCH update to existing Gist
+      const gistResult = await this.gistService.updateGist(uploadContent, newFilename, oldFilename, gistId);
+
+      if (gistResult.success) {
+        // Update frontmatter with new gist info
+        const updatedFrontmatter = this.addGistFrontmatter(
+          content,
+          gistResult.gistId!,
+          gistResult.gistUrl!,
+          newFilename
+        );
+        await this.app.vault.modify(file, updatedFrontmatter);
+        new Notice(`Gist updated: ${gistResult.gistUrl}`);
+      } else {
+        new Notice(`Failed to update Gist: ${gistResult.error}`);
+      }
+
+      statusBarItem.remove();
+    } catch (error) {
+      new Notice(`Failed to update Gist: ${(error as Error).message}`);
     }
   }
 

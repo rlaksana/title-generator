@@ -238,7 +238,7 @@ export class GistService {
   /**
    * Update an existing Gist in-place via the GitHub API (PATCH)
    */
-  private async updateGist(
+  async updateGist(
     content: string,
     newFilename: string,
     oldFilename: string,
