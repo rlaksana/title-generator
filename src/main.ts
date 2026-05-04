@@ -576,6 +576,19 @@ export default class TitleGeneratorPlugin extends Plugin {
     return undefined;
   }
 
+  private getGistFilenameFromFrontmatter(content: string): string | undefined {
+    const match = content.match(/^gist_filename:\s*(.+)\s*$/m);
+    if (match) {
+      let filename = match[1].trim();
+      // Strip surrounding quotes if present
+      if ((filename.startsWith('"') && filename.endsWith('"')) || (filename.startsWith("'") && filename.endsWith("'"))) {
+        filename = filename.slice(1, -1);
+      }
+      return filename;
+    }
+    return undefined;
+  }
+
   private async copyTitleAndGistLink(file: TFile): Promise<void> {
     try {
       const content = await this.app.vault.cachedRead(file);
