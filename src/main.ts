@@ -203,6 +203,26 @@ export default class TitleGeneratorPlugin extends Plugin {
         },
       });
 
+      this.addCommand({
+        id: 'normalize-gist-frontmatter',
+        name: 'Normalize Gist Frontmatter',
+        editorCallback: async (editor: Editor) => {
+          const file = this.app.workspace.getActiveFile();
+          if (!file) {
+            new Notice('No active file found.');
+            return;
+          }
+          const content = await this.app.vault.cachedRead(file);
+          const result = this.normalizeFrontmatter(content);
+          if (result.normalized) {
+            await this.app.vault.modify(file, result.content);
+            new Notice(`Normalized ${result.blockCount} frontmatter blocks into 1.`);
+          } else {
+            new Notice('No duplicate frontmatter found.');
+          }
+        },
+      });
+
       this.registerEvent(
         this.app.workspace.on('file-menu', (menu, file) => {
           if (file instanceof TFile && file.extension === 'md') {
@@ -217,6 +237,21 @@ export default class TitleGeneratorPlugin extends Plugin {
                 .setTitle('Update Gist')
                 .setIcon('lucide-refresh-cw')
                 .onClick(() => this.updateGistForFile(file))
+            );
+            menu.addItem((item) =>
+              item
+                .setTitle('Normalize Gist Frontmatter')
+                .setIcon('lucide-align-center')
+                .onClick(async () => {
+                  const content = await this.app.vault.cachedRead(file);
+                  const result = this.normalizeFrontmatter(content);
+                  if (result.normalized) {
+                    await this.app.vault.modify(file, result.content);
+                    new Notice(`Normalized ${result.blockCount} frontmatter blocks into 1.`);
+                  } else {
+                    new Notice('No duplicate frontmatter found.');
+                  }
+                })
             );
           }
         })
@@ -751,6 +786,50 @@ export default class TitleGeneratorPlugin extends Plugin {
     });
     const yamlPrefix = '---\n' + nonGistLines.join('\n');
     return this.serializeFrontmatter(fm, body, yamlPrefix);
+  }
+
+  private normalizeFrontmatter(content: string): { content: string; normalized: boolean; blockCount: number } {
+    // Handle files with no frontmatter at all
+    if (!content.startsWith('---')) {
+      return { content, normalized: false, blockCount: 0 };
+    }
+    // Parse ALL frontmatter blocks using regex (finds every ---...--- pair)
+    const fmBlockRegex = /---\n([\s\S]*?)\n---/g;
+    const allEntries: Array<{ key: string; val: string }> = [];
+    let lastEnd = 0;
+    let match;
+    let blockCount = 0;
+    while ((match = fmBlockRegex.exec(content)) !== null) {
+      blockCount++;
+      const fmContent = match[1];
+      for (const line of fmContent.split('\n')) {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx > 0) {
+          const key = line.slice(0, colonIdx).trim();
+          let val = line.slice(colonIdx + 1).trim();
+          // Strip surrounding quotes
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (key) {
+            allEntries.push({ key, val });
+          }
+        }
+      }
+      lastEnd = match.index + match[0].length;
+    }
+    // If no valid frontmatter blocks found or only 1 block, no normalization needed
+    if (allEntries.length === 0 || blockCount <= 1) {
+      return { content, normalized: false, blockCount };
+    }
+    // Rebuild: dedupe by key, preserving order (last value wins for duplicates)
+    const fm = new Map<string, string>();
+    for (const { key, val } of allEntries) {
+      fm.set(key, val);
+    }
+    // Body is everything after the last frontmatter block
+    const body = content.slice(lastEnd).trimStart();
+    return { content: this.serializeFrontmatter(fm, body), normalized: true, blockCount };
   }
 
   /**
