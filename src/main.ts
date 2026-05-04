@@ -473,8 +473,8 @@ export default class TitleGeneratorPlugin extends Plugin {
             );
 
             if (gistResult.success) {
-              // Add frontmatter with gist_id and gist_url
-              const frontmatterContent = this.addGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!);
+              // Add frontmatter with gist_id, gist_url, and gist_filename
+              const frontmatterContent = this.addGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!, sanitizedTitle + ext);
               await this.app.vault.modify(
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 frontmatterContent
@@ -614,8 +614,11 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
   }
 
-  private addGistFrontmatter(content: string, gistId: string, gistUrl: string): string {
-    const frontmatter = `gist_id: "${gistId}"\ngist_url: "${gistUrl}"\n`;
+  private addGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
+    const frontmatter = `gist_id: "${gistId}"
+gist_url: "${gistUrl}"
+gist_filename: "${gistFilename}"
+`;
     if (content.startsWith('---')) {
       // Insert after opening --- and frontmatter block
       const endOfFrontmatter = content.indexOf('---', 3);
