@@ -221,6 +221,57 @@ export class GistService {
   }
 
   /**
+   * Fetch a Gist by ID to recover the remote filename when gist_filename is missing.
+   * Uses GET /gists/{gistId} endpoint.
+   */
+  async fetchGist(
+    gistId: string
+  ): Promise<{ success: boolean; data?: any; error?: string; status?: number }> {
+    const settings = this.getSettings();
+
+    try {
+      const response = await requestUrl({
+        url: `https://api.github.com/gists/${gistId}`,
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${settings.githubPat}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+
+      if (response.status === 200) {
+        const data = response.json;
+        return {
+          success: true,
+          data,
+        };
+      }
+
+      if (response.status === 401) {
+        new Notice('GitHub authentication failed. Please check your PAT.', 7000);
+        return {
+          success: false,
+          error: 'Authentication failed. Please check your GitHub PAT.',
+          status: response.status,
+        };
+      }
+
+      return {
+        success: false,
+        error: `Failed to fetch Gist (${response.status}): ${response.text}`,
+        status: response.status,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: `Failed to fetch Gist: ${errorMessage}`,
+      };
+    }
+  }
+
+  /**
    * Delay helper for retry logic
    */
   private delay(ms: number): Promise<void> {
