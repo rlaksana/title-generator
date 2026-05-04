@@ -62,13 +62,13 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       this.addCommand({
         id: 'generate-title',
-        name: 'Rename title and share to Gist',
+        name: 'Rename & Share to Gist',
         editorCallback: (editor: Editor) => this.generateTitleForEditor(editor),
       });
 
       this.addCommand({
         id: 'copy-title-gist-link',
-        name: 'Copy title and Gist link',
+        name: 'Copy Gist Link',
         editorCallback: (editor: Editor) => {
           const file = this.app.workspace.getActiveFile();
           if (!file) {
@@ -81,7 +81,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       this.addCommand({
         id: 'paste-and-share-to-gist',
-        name: 'Paste clipboard & share to Gist',
+        name: 'Paste & Share to Gist',
         callback: async () => {
           try {
             // Check for required keys (needs Gist)
@@ -208,7 +208,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           if (file instanceof TFile && file.extension === 'md') {
             menu.addItem((item) =>
               item
-                .setTitle('Rename title and share to Gist')
+                .setTitle('Rename & Share to Gist')
                 .setIcon('lucide-edit-3')
                 .onClick(() => this.generateTitleForFile(file))
             );
@@ -231,7 +231,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           if (markdownFiles.length > 0) {
             menu.addItem((item) =>
               item
-                .setTitle(`Rename ${markdownFiles.length} titles and share to Gist`)
+                .setTitle(`Rename ${markdownFiles.length} Titles & Share to Gist`)
                 .setIcon('lucide-edit-3')
                 .onClick(() =>
                   this.generateTitlesForMultipleFiles(markdownFiles)
