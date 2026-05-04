@@ -640,16 +640,17 @@ export default class TitleGeneratorPlugin extends Plugin {
   private async updateGistForFile(file: TFile): Promise<void> {
     try {
       const content = await this.app.vault.cachedRead(file);
+      const statusBarItem = this.addStatusBarItem();
+      statusBarItem.setText('Updating Gist...');
+
       const gistId = this.getGistIdFromFrontmatter(content);
       const gistFilename = this.getGistFilenameFromFrontmatter(content);
 
       if (!gistId) {
         new Notice('No Gist found. Use "Rename & Share to Gist" first.');
+        statusBarItem.remove();
         return;
       }
-
-      const statusBarItem = this.addStatusBarItem();
-      statusBarItem.setText('Updating Gist...');
 
       // Extract raw markdown body (remove frontmatter for upload)
       let uploadContent = content;
