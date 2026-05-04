@@ -638,9 +638,10 @@ export default class TitleGeneratorPlugin extends Plugin {
    * No AI title generation, no rename, no GFM transformation.
    */
   private async updateGistForFile(file: TFile): Promise<void> {
+    const statusBarItem = this.addStatusBarItem();
     try {
       const content = await this.app.vault.cachedRead(file);
-      const statusBarItem = this.addStatusBarItem();
+      statusBarItem.setText('Updating Gist...');
       statusBarItem.setText('Updating Gist...');
 
       const gistId = this.getGistIdFromFrontmatter(content);
@@ -685,6 +686,7 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       statusBarItem.remove();
     } catch (error) {
+      statusBarItem.remove();
       new Notice(`Failed to update Gist: ${(error as Error).message}`);
     }
   }
