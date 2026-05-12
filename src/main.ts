@@ -653,21 +653,27 @@ export default class TitleGeneratorPlugin extends Plugin {
         return;
       }
 
-      // Extract raw markdown body (remove frontmatter for upload)
-      const { body: uploadContent } = this.parseFrontmatter(content);
-
       // Determine old and new filename
       const localBasename = file.basename + '.' + file.extension;
       const oldFilename = gistFilename || localBasename;
       const newFilename = localBasename;
 
-      // PATCH update to existing Gist
-      const gistResult = await this.gistService.updateGist(uploadContent, newFilename, oldFilename, gistId);
+      // Prepare updated frontmatter BEFORE uploading to gist (preserves all non-gist fields)
+      const { fm, body, hasFrontmatter } = this.parseFrontmatter(content);
+      fm.set('gist_id', gistId);
+      fm.set('gist_url', '');
+      fm.set('gist_filename', newFilename);
+      const contentWithGistFields = hasFrontmatter
+        ? this.serializeFrontmatter(fm, body)
+        : this.serializeFrontmatter(fm, content);
+
+      // PATCH update to existing Gist - upload full content WITH frontmatter
+      const gistResult = await this.gistService.updateGist(contentWithGistFields, newFilename, oldFilename, gistId);
 
       if (gistResult.success) {
-        // Update frontmatter with new gist info
+        // Update frontmatter with confirmed gist URL and ID
         const updatedFrontmatter = this.updateGistFrontmatter(
-          content,
+          contentWithGistFields,
           gistResult.gistId!,
           gistResult.gistUrl!,
           newFilename
@@ -731,7 +737,8 @@ export default class TitleGeneratorPlugin extends Plugin {
 
   private updateGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
     // Auto-normalize if multiple frontmatter blocks detected (corrupted state)
-    const blockCount = (content.match(/---\n[\s\S]*?\n---/g) || []).length;
+    // Match --- followed by content, then --- (with optional preceding newline)
+    const blockCount = (content.match(/---[\s\S]*?---/g) || []).length;
     let workingContent = content;
     if (blockCount > 1) {
       workingContent = this.normalizeFrontmatter(content).content;
