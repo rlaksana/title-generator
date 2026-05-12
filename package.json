@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "3.0.106",
+  "version": "3.0.107",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "main": "dist/main.js",
   "engines": {
