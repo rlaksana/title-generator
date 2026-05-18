@@ -10,6 +10,23 @@ import type {
 } from './types';
 
 /**
+ * Normalize a custom Anthropic base URL: trim whitespace, strip trailing slashes.
+ * Returns empty string if the input is falsy or invalid (non-http scheme).
+ */
+export function normalizeCustomUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    return parsed.origin; // strips path, query, hash, and trailing slash
+  } catch {
+    return '';
+  }
+}
+
+/**
  * OpenAI Strategy Implementation
  */
 class OpenAIStrategy implements AIProviderStrategy {
@@ -101,7 +118,7 @@ class AnthropicStrategy implements AIProviderStrategy {
     }
 
     return {
-      url: 'https://api.anthropic.com/v1/messages',
+      url: `${normalizeCustomUrl(settings.customAnthropicUrl) || 'https://api.anthropic.com'}/v1/messages`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

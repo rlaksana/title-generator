@@ -280,6 +280,7 @@ export interface TitleGeneratorSettings {
 
   // OpenRouter Settings
   openRouterApiKey: string;
+  customAnthropicUrl: string;
   openRouterReasoningEnabled: boolean;
 
   // Google Thinking Settings

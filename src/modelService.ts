@@ -1,5 +1,6 @@
 import { Notice, requestUrl } from 'obsidian';
 import type { AIProvider, TitleGeneratorSettings, CachedModels } from './types';
+import { normalizeCustomUrl } from './aiService';
 
 /**
  * Service for querying and managing AI provider models
@@ -129,8 +130,9 @@ export class ModelService {
       throw new Error('Anthropic API key not set');
     }
 
+    const baseUrl = normalizeCustomUrl(settings.customAnthropicUrl) || 'https://api.anthropic.com';
     const response = await requestUrl({
-      url: 'https://api.anthropic.com/v1/models',
+      url: `${baseUrl}/v1/models`,
       method: 'GET',
       headers: {
         'x-api-key': settings.anthropicApiKey,

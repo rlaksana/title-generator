@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   anthropicApiKey: '',
   googleApiKey: '',
   openRouterApiKey: '',
+  customAnthropicUrl: '',
 
   // Models
   openAiModel: 'gpt-4o-mini',
@@ -477,6 +478,19 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
               });
           });
       }
+
+      new Setting(containerEl)
+        .setName('Custom API URL')
+        .setDesc('Override the Anthropic API base URL (e.g., for proxies). Leave empty for default.')
+        .addText((text) => {
+          text
+            .setPlaceholder('https://api.anthropic.com')
+            .setValue(this.plugin.settings.customAnthropicUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.customAnthropicUrl = value;
+              await this.plugin.saveSettings();
+            });
+        });
     }
 
     // OpenRouter specific settings
