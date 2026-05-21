@@ -1,7 +1,7 @@
 {
   "id": "title-generator",
   "name": "Forge",
-  "version": "3.0.109",
+  "version": "3.0.110",
   "minAppVersion": "0.15.0",
   "description": "Generate titles using multiple AI providers with smart filename handling",
   "author": "Richard Laksana",
