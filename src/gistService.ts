@@ -11,6 +11,14 @@ export interface GistPublishResult {
 }
 
 /**
+ * Result of a Gist delete operation
+ */
+export interface GistDeleteResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
  * Settings subset required for Gist operations
  */
 interface GistSettings {
@@ -366,5 +374,55 @@ export class GistService {
     if (status === 429) return true;        // rate limit
     if (status >= 500 && status < 600) return true; // server error
     return false;
+  }
+
+  /**
+   * Delete a Gist by ID via the GitHub API.
+   * Uses DELETE /gists/{gist_id} endpoint.
+   */
+  async deleteGist(gistId: string): Promise<GistDeleteResult> {
+    const settings = this.getSettings();
+
+    try {
+      const response = await requestUrl({
+        url: `https://api.github.com/gists/${gistId}`,
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${settings.githubPat}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+
+      // 204 No Content = success
+      if (response.status === 204) {
+        return { success: true };
+      }
+
+      // 401 Unauthorized
+      if (response.status === 401) {
+        new Notice('GitHub authentication failed. Cannot delete Gist.', 7000);
+        return {
+          success: false,
+          error: 'Authentication failed. Please check your GitHub PAT.',
+        };
+      }
+
+      // 404 Not Found — gist already gone, treat as success
+      if (response.status === 404) {
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        error: `Gist deletion failed (${response.status}): ${response.text}`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: `Failed to delete Gist: ${errorMessage}`,
+      };
+    }
   }
 }
