@@ -242,6 +242,40 @@ export default class TitleGeneratorPlugin extends Plugin {
       );
 
       this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
+
+      // Register vault delete event to auto-delete corresponding Gist
+      this.registerEvent(
+        this.app.vault.on('delete', async (file) => {
+          if (!(file instanceof TFile) || file.extension !== 'md') return;
+
+          // Look up gist_id from the persistent map
+          const filePath = file.path;
+          let gistIdToDelete: string | undefined;
+          let updatedMap = { ...this.settings.gistFileMap };
+
+          for (const [gistId, entry] of Object.entries(updatedMap)) {
+            if (entry.path === filePath) {
+              gistIdToDelete = gistId;
+              break;
+            }
+          }
+
+          if (!gistIdToDelete) return;
+
+          // Attempt to delete the Gist
+          const result = await this.gistService.deleteGist(gistIdToDelete);
+
+          // Clean up the map
+          const { [gistIdToDelete]: _, ...rest } = updatedMap;
+          this.settings.gistFileMap = rest;
+          await this.saveSettings();
+
+          if (!result.success) {
+            new Notice('Failed to delete Gist from GitHub');
+          }
+        })
+      );
+
       this.logger.info('Plugin loaded successfully');
     } catch (error) {
       this.errorHandler.handleError(error as Error, {
@@ -492,6 +526,18 @@ export default class TitleGeneratorPlugin extends Plugin {
             );
 
             if (gistResult.success) {
+              // Sync gistFileMap when gist is created/updated
+              this.settings.gistFileMap[gistResult.gistId!] = {
+                filename: sanitizedTitle + ext,
+                path: candidatePath,
+              };
+              await this.saveSettings();
+
+              // If this was an update (existingGistId was present), clean up the old entry
+              if (existingGistId && existingGistId !== gistResult.gistId) {
+                delete this.settings.gistFileMap[existingGistId];
+              }
+
               // Add frontmatter with gist_id, gist_url, and gist_filename
               const frontmatterContent = this.updateGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!, sanitizedTitle + ext);
               await this.app.vault.modify(
@@ -679,6 +725,14 @@ export default class TitleGeneratorPlugin extends Plugin {
           newFilename
         );
         await this.app.vault.modify(file, updatedFrontmatter);
+
+        // Sync gistFileMap
+        this.settings.gistFileMap[gistResult.gistId!] = {
+          filename: newFilename,
+          path: file.path,
+        };
+        await this.saveSettings();
+
         new Notice(`Gist updated: ${gistResult.gistUrl}`);
       } else {
         new Notice(`Failed to update Gist: ${gistResult.error}`);
