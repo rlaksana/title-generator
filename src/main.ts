@@ -251,9 +251,8 @@ export default class TitleGeneratorPlugin extends Plugin {
           // Look up gist_id from the persistent map
           const filePath = file.path;
           let gistIdToDelete: string | undefined;
-          let updatedMap = { ...this.settings.gistFileMap };
 
-          for (const [gistId, entry] of Object.entries(updatedMap)) {
+          for (const [gistId, entry] of Object.entries(this.settings.gistFileMap)) {
             if (entry.path === filePath) {
               gistIdToDelete = gistId;
               break;
@@ -266,8 +265,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           const result = await this.gistService.deleteGist(gistIdToDelete);
 
           // Clean up the map
-          const { [gistIdToDelete]: _, ...rest } = updatedMap;
-          this.settings.gistFileMap = rest;
+          delete this.settings.gistFileMap[gistIdToDelete];
           await this.saveSettings();
 
           if (!result.success) {
