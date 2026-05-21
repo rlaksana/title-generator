@@ -711,8 +711,8 @@ export default class TitleGeneratorPlugin extends Plugin {
         ? this.serializeFrontmatter(fm, body)
         : this.serializeFrontmatter(fm, content);
 
-      // PATCH update to existing Gist - upload full content WITH frontmatter
-      const gistResult = await this.gistService.updateGist(contentWithGistFields, newFilename, oldFilename, gistId);
+      // PATCH update to existing Gist - upload body only (no frontmatter)
+      const gistResult = await this.gistService.updateGist(body, newFilename, oldFilename, gistId);
 
       if (gistResult.success) {
         // Update frontmatter with confirmed gist URL and ID
