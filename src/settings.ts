@@ -96,6 +96,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   // Gist Auto-Share Settings
   enableGistAutoShare: false,
   githubPat: '',
+  gistFileMap: {},
 };
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {

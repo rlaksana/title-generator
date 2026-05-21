@@ -251,6 +251,14 @@ export interface GistPublishResult {
 }
 
 /**
+ * Gist file mapping entry
+ */
+export interface GistFileMapEntry {
+  filename: string;
+  path: string;
+}
+
+/**
  * Interface for AI provider strategies
  */
 export interface AIProviderStrategy {
@@ -317,4 +325,5 @@ export interface TitleGeneratorSettings {
   // Gist Auto-Share Settings
   enableGistAutoShare: boolean;
   githubPat: string;
+  gistFileMap: Record<string, GistFileMapEntry>;
 }
