@@ -230,6 +230,14 @@ export const PROVIDER_CONFIG = {
       'gemini-2.0-flash',
     ],
   },
+  kimi: {
+    name: 'Kimi',
+    apiKeyField: 'kimiApiKey',
+    modelField: 'kimiModel',
+    requiresApiKey: true,
+    supportsTemperature: true,
+    defaultModels: ['kimi-for-coding'],
+  },
 } as const;
 
 // Regular expressions for cleaning AI responses

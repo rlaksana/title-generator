@@ -5,7 +5,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi';
 
 /**
  * Provider configuration interface
@@ -290,6 +290,10 @@ export interface TitleGeneratorSettings {
   openRouterApiKey: string;
   customAnthropicUrl: string;
   openRouterReasoningEnabled: boolean;
+
+  // Kimi Settings
+  kimiApiKey: string;
+  kimiModel: string;
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';

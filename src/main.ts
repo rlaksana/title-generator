@@ -782,7 +782,9 @@ export default class TitleGeneratorPlugin extends Plugin {
     });
     const fmStr = lines.join('\n');
     if (existingYamlPrefix !== '') {
-      return `${existingYamlPrefix}\n${fmStr}\n---\n${body}`;
+      // yamlPrefix already includes trailing newline from updateGistFrontmatter construction,
+      // so concatenate directly without adding extra newline
+      return `${existingYamlPrefix}${fmStr}\n---\n${body}`;
     }
     return `---\n${fmStr}\n---\n${body}`;
   }
@@ -800,14 +802,17 @@ export default class TitleGeneratorPlugin extends Plugin {
     fm.set('gist_id', gistId);
     fm.set('gist_url', gistUrl);
     fm.set('gist_filename', gistFilename);
+    // Trim leading newlines from body to prevent blank line accumulation during updates.
+    // The newline after closing --- is formatting, not content, so it should not be preserved.
+    const trimmedBody = body.replace(/^\n+/, '');
     if (!hasFrontmatter) {
-      return this.serializeFrontmatter(fm, body);
+      return this.serializeFrontmatter(fm, trimmedBody);
     }
     // Build yamlPrefix WITHOUT existing gist fields (they're replaced via fm.set)
     const afterOpening = workingContent.slice(3);
     const closingMatch = afterOpening.match(/\n---/);
     if (!closingMatch) {
-      return this.serializeFrontmatter(fm, body);
+      return this.serializeFrontmatter(fm, trimmedBody);
     }
     const closingIndex = closingMatch.index!;
     const existingFmLines = afterOpening.slice(0, closingIndex).split('\n');
@@ -816,7 +821,7 @@ export default class TitleGeneratorPlugin extends Plugin {
       return key && !['gist_id', 'gist_url', 'gist_filename'].includes(key);
     });
     const yamlPrefix = '---\n' + nonGistLines.join('\n');
-    return this.serializeFrontmatter(fm, body, yamlPrefix);
+    return this.serializeFrontmatter(fm, trimmedBody, yamlPrefix);
   }
 
   private normalizeFrontmatter(content: string): { content: string; normalized: boolean; blockCount: number } {
@@ -871,7 +876,8 @@ export default class TitleGeneratorPlugin extends Plugin {
     const aiKeyMissing = !this.settings.openAiApiKey &&
                          !this.settings.anthropicApiKey &&
                          !this.settings.googleApiKey &&
-                         !this.settings.openRouterApiKey;
+                         !this.settings.openRouterApiKey &&
+                         !this.settings.kimiApiKey;
     const gistMissing = needsGist && !this.settings.githubPat;
 
     if (!aiKeyMissing && !gistMissing) {
@@ -886,7 +892,8 @@ export default class TitleGeneratorPlugin extends Plugin {
           const aiKeyNow = this.settings.openAiApiKey ||
                            this.settings.anthropicApiKey ||
                            this.settings.googleApiKey ||
-                           this.settings.openRouterApiKey;
+                           this.settings.openRouterApiKey ||
+                           this.settings.kimiApiKey;
           const gistOkNow = !needsGist || !!this.settings.githubPat;
           resolve(!!aiKeyNow && gistOkNow);
         } else {
@@ -928,6 +935,7 @@ class ApiKeyPromptModal extends Modal {
           .addOption('anthropic', 'Anthropic')
           .addOption('google', 'Google Gemini')
           .addOption('openrouter', 'OpenRouter')
+          .addOption('kimi', 'Kimi')
           .setValue(this.plugin.settings.aiProvider)
           .onChange((value) => {
             this.plugin.settings.aiProvider = value as any;
@@ -987,6 +995,19 @@ class ApiKeyPromptModal extends Modal {
         });
       });
 
+    // Kimi API Key
+    const kimiSetting = new Setting(contentEl)
+      .setName('Kimi API Key')
+      .setDesc('Required for Kimi models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-...';
+        text.setValue(this.plugin.settings.kimiApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.kimiApiKey = value;
+        });
+      });
+
     // GitHub PAT (only if needed)
     let gistSetting: Setting | null = null;
     if (this.needsGist) {
@@ -1010,6 +1031,7 @@ class ApiKeyPromptModal extends Modal {
       anthropicSetting.settingEl.style.display = provider === 'anthropic' ? '' : 'none';
       googleSetting.settingEl.style.display = provider === 'google' ? '' : 'none';
       openrouterSetting.settingEl.style.display = provider === 'openrouter' ? '' : 'none';
+      kimiSetting.settingEl.style.display = provider === 'kimi' ? '' : 'none';
     };
     this.updateInputVisibility();
 
@@ -1031,7 +1053,8 @@ class ApiKeyPromptModal extends Modal {
             this.plugin.settings.openAiApiKey ||
             this.plugin.settings.anthropicApiKey ||
             this.plugin.settings.googleApiKey ||
-            this.plugin.settings.openRouterApiKey
+            this.plugin.settings.openRouterApiKey ||
+            this.plugin.settings.kimiApiKey
           );
           if (!hasAiKey) {
             new Notice('Please enter at least one AI API key');

@@ -79,6 +79,8 @@ export class ModelService {
         return this.queryGoogleModels(settings);
       case 'openrouter':
         return this.queryOpenRouterModels(settings);
+      case 'kimi':
+        return this.queryKimiModels(settings);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -185,6 +187,37 @@ export class ModelService {
       )
       .map((model: any) => model.name.replace('models/', ''))
       .sort();
+  }
+
+  private async queryKimiModels(
+    settings: TitleGeneratorSettings
+  ): Promise<string[]> {
+    if (!settings.kimiApiKey.trim()) {
+      throw new Error('Kimi API key not set');
+    }
+
+    const response = await requestUrl({
+      url: 'https://api.kimi.com/coding/v1/models',
+      method: 'GET',
+      headers: {
+        'x-api-key': settings.kimiApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `Kimi API error (${response.status}): ${response.text}`
+      );
+    }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from Kimi API');
+    }
+
+    return data.data.map((model: any) => model.id).sort();
   }
 
   private async queryOpenRouterModels(

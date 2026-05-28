@@ -77,6 +77,13 @@ export class ValidationService {
           );
         }
         break;
+      case 'kimi':
+        if (trimmedKey.length < 10) {
+          result.warnings.push(
+            'Kimi API keys are typically longer than 10 characters'
+          );
+        }
+        break;
     }
 
     return result;
@@ -143,6 +150,13 @@ export class ValidationService {
         if (!trimmedName.includes('gemini')) {
           result.warnings.push(
             'Google models typically contain "gemini" in the name'
+          );
+        }
+        break;
+      case 'kimi':
+        if (!trimmedName.includes('kimi')) {
+          result.warnings.push(
+            'Kimi models typically contain "kimi" in the name'
           );
         }
         break;
@@ -527,6 +541,7 @@ export class ValidationService {
         break;
 
       case 'anthropic':
+      case 'kimi':
         if (
           !response.content ||
           !Array.isArray(response.content) ||
@@ -573,6 +588,8 @@ export class ValidationService {
         return 'anthropicApiKey';
       case 'google':
         return 'googleApiKey';
+      case 'kimi':
+        return 'kimiApiKey';
       default:
         throw new TitleGeneratorError(
           `Unknown provider: ${provider}`,
@@ -593,6 +610,8 @@ export class ValidationService {
         return 'anthropicModel';
       case 'google':
         return 'googleModel';
+      case 'kimi':
+        return 'kimiModel';
       default:
         throw new TitleGeneratorError(
           `Unknown provider: ${provider}`,

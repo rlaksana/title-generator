@@ -194,6 +194,43 @@ class GoogleStrategy implements AIProviderStrategy {
 }
 
 /**
+ * Kimi Strategy Implementation
+ * Kimi uses an Anthropic-compatible API endpoint.
+ */
+class KimiStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+
+    const body: any = {
+      model: settings.kimiModel,
+      messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: 1024,
+      temperature: settings.temperature,
+    };
+
+    return {
+      url: 'https://api.kimi.com/coding/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.kimiApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: AnthropicResponse): string {
+    const textContent = response.content.find((c: any) => c.type === 'text');
+    return textContent?.text?.trim() ?? '';
+  }
+}
+
+/**
  * OpenRouter Strategy Implementation
  */
 class OpenRouterStrategy implements AIProviderStrategy {
@@ -246,6 +283,7 @@ export class AIService {
       anthropic: new AnthropicStrategy(),
       google: new GoogleStrategy(),
       openrouter: new OpenRouterStrategy(),
+      kimi: new KimiStrategy(),
     };
   }
 
@@ -368,6 +406,11 @@ export class AIService {
         key: settings.openRouterApiKey,
         model: settings.openRouterModel,
         name: 'OpenRouter',
+      },
+      kimi: {
+        key: settings.kimiApiKey,
+        model: settings.kimiModel,
+        name: 'Kimi',
       },
     };
 

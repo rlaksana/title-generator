@@ -23,6 +23,10 @@ export const AI_PROVIDERS: Record<
     name: 'OpenRouter',
     requiresApiKey: true,
   },
+  kimi: {
+    name: 'Kimi',
+    requiresApiKey: true,
+  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
@@ -33,12 +37,14 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   googleApiKey: '',
   openRouterApiKey: '',
   customAnthropicUrl: '',
+  kimiApiKey: '',
 
   // Models
   openAiModel: 'gpt-4o-mini',
   anthropicModel: 'claude-haiku-4-5',
   googleModel: 'gemini-3-flash-preview',
   openRouterModel: 'openai/gpt-4o-mini',
+  kimiModel: 'kimi-for-coding',
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF',
@@ -56,12 +62,14 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     anthropic: { models: [], lastUpdated: 0 },
     google: { models: [], lastUpdated: 0 },
     openrouter: { models: [], lastUpdated: 0 },
+    kimi: { models: [], lastUpdated: 0 },
   },
   modelLoadingState: {
     openai: false,
     anthropic: false,
     google: false,
     openrouter: false,
+    kimi: false,
   },
 
   // Title
@@ -519,6 +527,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       case 'openrouter':
         modelName = 'openRouterModel';
         break;
+      case 'kimi':
+        modelName = 'kimiModel';
+        break;
       default:
         return; // Should not happen
     }
@@ -737,6 +748,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return !!settings.googleApiKey.trim();
       case 'openrouter':
         return !!settings.openRouterApiKey.trim();
+      case 'kimi':
+        return !!settings.kimiApiKey.trim();
       default:
         return false;
     }
