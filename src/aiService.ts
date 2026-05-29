@@ -204,6 +204,7 @@ class KimiStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.kimiModel,
       messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: 8192,
       temperature: settings.temperature,
     };
 
