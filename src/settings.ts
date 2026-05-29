@@ -44,10 +44,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   kimiApiKey: '',
 
   // Models
-  openAiModel: 'gpt-4o-mini',
-  anthropicModel: 'claude-haiku-4-5',
-  googleModel: 'gemini-3-flash-preview',
-  openRouterModel: 'openai/gpt-4o-mini',
+  openAiModel: 'gpt-5.5',
+  anthropicModel: 'claude-sonnet-4-6-20251001',
+  googleModel: 'gemini-3.5-flash',
+  openRouterModel: 'openai/gpt-5.5',
   kimiModel: 'kimi-for-coding',
 
   // LiteLLM

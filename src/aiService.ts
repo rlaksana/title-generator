@@ -47,11 +47,6 @@ class OpenAIStrategy implements AIProviderStrategy {
     };
 
     if (isReasoningModel) {
-      // Use max_completion_tokens for newer reasoning models.
-      // Reasoning models need a larger budget because the total includes hidden 'thinking' tokens.
-      // For gpt-5-mini, we provide a generous 5000 token limit for total generation.
-      body.max_completion_tokens = 5000;
-
       // Handle reasoning_effort for GPT-5 models
       if (model.includes('gpt-5')) {
         // gpt-5-mini supports low, medium, high reasoning effort.
@@ -64,7 +59,6 @@ class OpenAIStrategy implements AIProviderStrategy {
       }
     } else {
       body.temperature = settings.temperature;
-      body.max_tokens = settings.maxTitleLength * 4;
     }
 
     return {
@@ -95,16 +89,18 @@ class AnthropicStrategy implements AIProviderStrategy {
     const fullPrompt = `${prompt}\n\n${content}`.trim();
     const model = settings.anthropicModel;
 
-    // Detection for Claude 3.7+ reasoning models
+    // Detection for Claude reasoning models (3.7, 4.5, 4.6, 4.7)
     const isReasoningModel =
       model.includes('3-7') ||
       model.includes('4-5') ||
+      model.includes('4-6') ||
+      model.includes('4-7') ||
       model.includes('haiku-4-5');
 
     const body: any = {
       model: model,
       messages: [{ role: 'user', content: fullPrompt }],
-      max_tokens: isReasoningModel ? 4096 : 1024,
+      max_tokens: 8192,
     };
 
     if (isReasoningModel && settings.anthropicThinkingEnabled) {
@@ -208,7 +204,6 @@ class KimiStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.kimiModel,
       messages: [{ role: 'user', content: fullPrompt }],
-      max_tokens: 1024,
       temperature: settings.temperature,
     };
 
@@ -245,7 +240,6 @@ class OpenRouterStrategy implements AIProviderStrategy {
       model: settings.openRouterModel,
       messages: [{ role: 'user', content: fullPrompt }],
       temperature: settings.temperature,
-      max_tokens: settings.maxTitleLength * 4,
     };
 
     if (settings.openRouterReasoningEnabled) {
@@ -290,7 +284,6 @@ class LiteLLMStrategy implements AIProviderStrategy {
       model: settings.litellmModel,
       messages: [{ role: 'user', content: fullPrompt }],
       temperature: settings.temperature,
-      max_tokens: settings.maxTitleLength * 4,
     };
 
     const headers: Record<string, string> = {
