@@ -10,7 +10,10 @@ export class GfmService {
    * Pre-transform: normalize input Markdown before AI processing
    * @param stripCitations - if true, also remove citation markers from content
    */
-  preTransform(content: string, stripCitationsSetting: boolean = false): string {
+  preTransform(
+    content: string,
+    stripCitationsSetting: boolean = false
+  ): string {
     let result = content;
 
     // Strip citation markers if enabled
@@ -39,12 +42,22 @@ export class GfmService {
   /**
    * Post-transform: ensure GFM compliance after AI processing
    * @param cleanQAPrefix - if true, also strip Q&A prefix patterns from output
+   * @param sentPrompt - the prompt sent to the AI, used to detect prompt echoing
    */
-  postTransform(content: string, cleanQAPrefix: boolean = true): string {
+  postTransform(
+    content: string,
+    cleanQAPrefix: boolean = true,
+    sentPrompt?: string
+  ): string {
     let result = content;
 
     // Strip leaked instructions from AI output
     result = this.stripInstructions(result);
+
+    // Strip prompt echoing if we know what was sent
+    if (sentPrompt) {
+      result = this.stripPromptEcho(result, sentPrompt);
+    }
 
     // Strip Q&A prefix from AI output (only if enabled)
     if (cleanQAPrefix) {
@@ -71,19 +84,29 @@ export class GfmService {
 
   /**
    * Strip leaked instructions from AI output
-   * Removes common instruction patterns that AI may include in its response
+   * Removes common instruction patterns that AI may include in its response,
+   * including prompt echoing from the GFM reformat prompt.
    */
   private stripInstructions(content: string): string {
     let result = content;
 
-    // Common instruction patterns that leak into AI output
+    // Common meta-instruction phrases that leak from any prompt
     const instructionPatterns = [
       /^Instructions?:.*$/gim,
       /^You are a helpful assistant\.?$/gim,
+      /^You are a GitHub Flavored Markdown.*$/gim,
       /^Format the following.*$/gim,
+      /^Transform the following content.*$/gim,
       /^Here's the (reformatted |formatted )?content.*$/gim,
       /^Below is the (reformatted |formatted )?content.*$/gim,
       /^(Sure|Sure!|Of course|Here's).*reformat/i,
+      /^Output ONLY the transformed content.*$/gim,
+      /^CRITICAL:.*$/gim,
+      /^IMPORTANT: Before reformatting.*$/gim,
+      /^Please reformat ONLY.*$/gim,
+      /^Do NOT repeat these instructions.*$/gim,
+      /^Do NOT add explanations.*$/gim,
+      /^Do NOT include the original prompt.*$/gim,
     ];
 
     const lines = result.split('\n');
@@ -94,6 +117,58 @@ export class GfmService {
     result = filteredLines.join('\n');
 
     return result;
+  }
+
+  /**
+   * Strip prompt echoing by comparing output against the sent prompt.
+   * Only removes lines that are exact or near-exact matches of instruction lines,
+   * avoiding false positives on legitimate content.
+   */
+  private stripPromptEcho(content: string, sentPrompt: string): string {
+    // Build a set of prompt lines that look like instructions (not content)
+    const promptLines = sentPrompt.split('\n');
+    const instructionLines = new Set<string>();
+
+    for (const line of promptLines) {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) continue;
+
+      // Only fingerprint lines that are clearly instructions
+      const isInstruction =
+        /^You are\b/i.test(trimmed) ||
+        /^Format\b/i.test(trimmed) ||
+        /^Transform\b/i.test(trimmed) ||
+        /^Output\b/i.test(trimmed) ||
+        /^CRITICAL:/i.test(trimmed) ||
+        /^IMPORTANT:/i.test(trimmed) ||
+        /^Please\b/i.test(trimmed) ||
+        /^Do NOT\b/i.test(trimmed) ||
+        /^Instructions?:/i.test(trimmed) ||
+        /^Here's\b/i.test(trimmed) ||
+        /^Below\b/i.test(trimmed) ||
+        /^[-*+]\s+(Use|Ensure|Normalize|Convert|Remove)\b/i.test(trimmed);
+
+      if (isInstruction) {
+        instructionLines.add(trimmed);
+        // Also add without trailing period for fuzzy match
+        instructionLines.add(trimmed.replace(/\.$/, ''));
+      }
+    }
+
+    if (instructionLines.size === 0) return content;
+
+    const lines = content.split('\n');
+    const filteredLines = lines.filter((line) => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return true;
+      // Remove if it matches a known instruction line (exact match)
+      if (instructionLines.has(trimmed)) return false;
+      // Remove if it matches without trailing period
+      if (instructionLines.has(trimmed.replace(/\.$/, ''))) return false;
+      return true;
+    });
+
+    return filteredLines.join('\n');
   }
 
   /**
@@ -111,8 +186,7 @@ export class GfmService {
 
     const isQuestionStart =
       firstLine.match(/^(?:Q:|Question:)\s*.+$/i) !== null;
-    const isAnswerStart =
-      secondLine.match(/^(?:A:|Answer:)\s*.+$/i) !== null;
+    const isAnswerStart = secondLine.match(/^(?:A:|Answer:)\s*.+$/i) !== null;
 
     if (!isQuestionStart || !isAnswerStart) return content;
 
@@ -147,10 +221,7 @@ export class GfmService {
    */
   transformTaskLists(content: string): string {
     // Match various checkbox formats: [ ], [x], [X], ( ), (x), < >
-    return content.replace(
-      /^(\s*)[-*+]?\s*\[([ xX])\]\s*/gm,
-      '$1- [$2] '
-    );
+    return content.replace(/^(\s*)[-*+]?\s*\[([ xX])\]\s*/gm, '$1- [$2] ');
   }
 
   /**
@@ -284,7 +355,9 @@ export class GfmService {
    * Normalize table separator to GFM format
    */
   private normalizeTableSeparator(line: string): string {
-    const cells = line.split('|').filter((c, i, a) => i > 0 && i < a.length - 1);
+    const cells = line
+      .split('|')
+      .filter((c, i, a) => i > 0 && i < a.length - 1);
 
     const normalizedCells = cells.map((cell) => {
       const trimmed = cell.trim();

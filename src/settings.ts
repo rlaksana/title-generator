@@ -110,7 +110,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     '- Convert <del> tags to ~~strikethrough~~\n' +
     '- Ensure URLs are properly formatted for auto-linking\n' +
     '- Remove any HTML tags that are not allowed in Gist\n\n' +
-    'Output ONLY the transformed content, no explanations.',
+    'CRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.',
 
   // Gist Auto-Share Settings
   enableGistAutoShare: false,
@@ -315,7 +315,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Strip Q&A prefix from AI output')
-      .setDesc('Remove Q&A prefix patterns (Q: / Question:) from content. Useful for Perplexity-generated content.')
+      .setDesc(
+        'Remove Q&A prefix patterns (Q: / Question:) from content. Useful for Perplexity-generated content.'
+      )
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.cleanQAPrefix)
@@ -330,7 +332,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Auto-share to Gist')
-      .setDesc('After generating a title, automatically publish the note to a secret GitHub Gist.')
+      .setDesc(
+        'After generating a title, automatically publish the note to a secret GitHub Gist.'
+      )
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.enableGistAutoShare)
@@ -349,10 +353,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
       const apiKeySetting = new Setting(containerEl)
         .setName('GitHub Personal Access Token')
-        .setDesc('Required for Gist auto-share. Create at https://github.com/settings/tokens');
+        .setDesc(
+          'Required for Gist auto-share. Create at https://github.com/settings/tokens'
+        );
       apiKeySetting.addText((text) => {
         textEl = text;
-        text.setPlaceholder('ghp_xxxxxxxxxxxx')
+        text
+          .setPlaceholder('ghp_xxxxxxxxxxxx')
           .setValue(initialValue)
           .onChange((value) => {
             currentValue = value;
@@ -363,22 +370,28 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
       apiKeySetting.addButton((btn) => {
         cancelBtn = btn;
-        btn.setButtonText('Cancel').setDisabled(true).onClick(() => {
-          textEl.setValue(initialValue);
-          currentValue = initialValue;
-          cancelBtn.setDisabled(true);
-          okBtn.setDisabled(true);
-        });
+        btn
+          .setButtonText('Cancel')
+          .setDisabled(true)
+          .onClick(() => {
+            textEl.setValue(initialValue);
+            currentValue = initialValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
       });
       apiKeySetting.addButton((btn) => {
         okBtn = btn;
-        btn.setButtonText('OK').setDisabled(true).onClick(async () => {
-          this.plugin.settings.githubPat = currentValue;
-          await this.plugin.saveSettings();
-          initialValue = currentValue;
-          cancelBtn.setDisabled(true);
-          okBtn.setDisabled(true);
-        });
+        btn
+          .setButtonText('OK')
+          .setDisabled(true)
+          .onClick(async () => {
+            this.plugin.settings.githubPat = currentValue;
+            await this.plugin.saveSettings();
+            initialValue = currentValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
       });
     }
   }
@@ -505,7 +518,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
       new Setting(containerEl)
         .setName('Custom API URL')
-        .setDesc('Override the Anthropic API base URL (e.g., for proxies). Leave empty for default.')
+        .setDesc(
+          'Override the Anthropic API base URL (e.g., for proxies). Leave empty for default.'
+        )
         .addText((text) => {
           text
             .setPlaceholder('https://api.anthropic.com')
@@ -526,7 +541,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     if (provider === 'litellm') {
       new Setting(containerEl)
         .setName('LiteLLM Base URL')
-        .setDesc('The base URL of your LiteLLM server. Trailing slashes will be stripped automatically.')
+        .setDesc(
+          'The base URL of your LiteLLM server. Trailing slashes will be stripped automatically.'
+        )
         .addText((text) => {
           text
             .setPlaceholder('http://localhost:4000')
@@ -544,7 +561,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
       const apiKeySetting = new Setting(containerEl)
         .setName('LiteLLM API Key')
-        .setDesc('Optional. Leave empty for local servers without authentication.');
+        .setDesc(
+          'Optional. Leave empty for local servers without authentication.'
+        );
       apiKeySetting.addText((text) => {
         textEl = text;
         text.inputEl.type = 'password';
@@ -560,22 +579,28 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
       apiKeySetting.addButton((btn) => {
         cancelBtn = btn;
-        btn.setButtonText('Cancel').setDisabled(true).onClick(() => {
-          textEl.setValue(initialValue);
-          currentValue = initialValue;
-          cancelBtn.setDisabled(true);
-          okBtn.setDisabled(true);
-        });
+        btn
+          .setButtonText('Cancel')
+          .setDisabled(true)
+          .onClick(() => {
+            textEl.setValue(initialValue);
+            currentValue = initialValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
       });
       apiKeySetting.addButton((btn) => {
         okBtn = btn;
-        btn.setButtonText('OK').setDisabled(true).onClick(async () => {
-          this.plugin.settings.litellmApiKey = currentValue;
-          await this.plugin.saveSettings();
-          initialValue = currentValue;
-          cancelBtn.setDisabled(true);
-          okBtn.setDisabled(true);
-        });
+        btn
+          .setButtonText('OK')
+          .setDisabled(true)
+          .onClick(async () => {
+            this.plugin.settings.litellmApiKey = currentValue;
+            await this.plugin.saveSettings();
+            initialValue = currentValue;
+            cancelBtn.setDisabled(true);
+            okBtn.setDisabled(true);
+          });
       });
     }
   }
@@ -583,7 +608,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
   private renderLiteLLMModelInput(containerEl: HTMLElement): void {
     new Setting(containerEl)
       .setName('Model')
-      .setDesc('The LiteLLM model to use (e.g., ollama/llama3, bedrock/anthropic.claude-v3, gpt-4o).')
+      .setDesc(
+        'The LiteLLM model to use (e.g., ollama/llama3, bedrock/anthropic.claude-v3, gpt-4o).'
+      )
       .addText((text) => {
         text
           .setPlaceholder('ollama/llama3')
@@ -838,7 +865,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       case 'kimi':
         return !!settings.kimiApiKey.trim();
       case 'litellm':
-        return !!settings.litellmBaseUrl.trim() && !!settings.litellmModel.trim();
+        return (
+          !!settings.litellmBaseUrl.trim() && !!settings.litellmModel.trim()
+        );
       default:
         return false;
     }

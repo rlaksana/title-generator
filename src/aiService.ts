@@ -393,7 +393,11 @@ export class AIService {
   /**
    * Reformat content to be GitHub Flavored Markdown (GFM) compliant
    */
-  async reformatForGfm(noteContent: string, gfmPrompt: string, title?: string): Promise<string> {
+  async reformatForGfm(
+    noteContent: string,
+    gfmPrompt: string,
+    title?: string
+  ): Promise<string> {
     const settings = this.getSettings();
 
     if (!this.isConfigurationValid(settings)) {
@@ -403,8 +407,14 @@ export class AIService {
     try {
       let prompt = `${gfmPrompt}\n\n${noteContent}`.trim();
       if (title) {
-        prompt += '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' + title + '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+        prompt +=
+          '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
+          title +
+          '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
       }
+      // Anti-echoing guard: explicitly tell the model not to repeat instructions
+      prompt +=
+        '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations or summaries.';
       return await this.callAI(prompt, '');
     } catch (error) {
       this.handleError(error, settings);

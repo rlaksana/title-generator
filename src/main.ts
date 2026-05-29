@@ -95,7 +95,8 @@ export default class TitleGeneratorPlugin extends Plugin {
             }
             // Check if current tab is empty (no MarkdownView = "No file is open")
             // If empty, reuse the tab. If not empty, create a new tab.
-            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            const activeView =
+              this.app.workspace.getActiveViewOfType(MarkdownView);
             let leaf: WorkspaceLeaf;
             if (!activeView) {
               // Empty tab - use the current leaf
@@ -115,7 +116,7 @@ export default class TitleGeneratorPlugin extends Plugin {
             while (attempts < 20) {
               activeFile = this.app.workspace.getActiveFile();
               if (activeFile) break;
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise((resolve) => setTimeout(resolve, 100));
               attempts++;
             }
             if (!activeFile) {
@@ -127,9 +128,14 @@ export default class TitleGeneratorPlugin extends Plugin {
               const editor = (leaf.view as any).editor as Editor | null;
               if (editor) editor.replaceSelection(clipboardText);
             }
-            await this.processSingleFile(activeFile, clipboardText, { forceGfm: true, forceGist: true });
+            await this.processSingleFile(activeFile, clipboardText, {
+              forceGfm: true,
+              forceGist: true,
+            });
           } catch (error) {
-            new Notice(`Failed to paste and share: ${(error as Error).message}`);
+            new Notice(
+              `Failed to paste and share: ${(error as Error).message}`
+            );
           }
         },
       });
@@ -150,7 +156,8 @@ export default class TitleGeneratorPlugin extends Plugin {
             }
             // Check if current tab is empty (no MarkdownView = "No file is open")
             // If empty, reuse the tab. If not empty, create a new tab.
-            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            const activeView =
+              this.app.workspace.getActiveViewOfType(MarkdownView);
             let leaf: WorkspaceLeaf;
             if (!activeView) {
               // Empty tab - use the current leaf
@@ -170,7 +177,7 @@ export default class TitleGeneratorPlugin extends Plugin {
             while (attempts < 20) {
               activeFile = this.app.workspace.getActiveFile();
               if (activeFile) break;
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise((resolve) => setTimeout(resolve, 100));
               attempts++;
             }
             if (!activeFile) {
@@ -231,7 +238,9 @@ export default class TitleGeneratorPlugin extends Plugin {
           if (markdownFiles.length > 0) {
             menu.addItem((item) =>
               item
-                .setTitle(`Rename ${markdownFiles.length} Titles & Share to Gist`)
+                .setTitle(
+                  `Rename ${markdownFiles.length} Titles & Share to Gist`
+                )
                 .setIcon('lucide-edit-3')
                 .onClick(() =>
                   this.generateTitlesForMultipleFiles(markdownFiles)
@@ -252,7 +261,9 @@ export default class TitleGeneratorPlugin extends Plugin {
           const filePath = file.path;
           let gistIdToDelete: string | undefined;
 
-          for (const [gistId, entry] of Object.entries(this.settings.gistFileMap)) {
+          for (const [gistId, entry] of Object.entries(
+            this.settings.gistFileMap
+          )) {
             if (entry.path === filePath) {
               gistIdToDelete = gistId;
               break;
@@ -474,14 +485,32 @@ export default class TitleGeneratorPlugin extends Plugin {
         // Reformat body to GFM if enabled (or forced by command)
         if (this.settings.enableGfmReformatting || options?.forceGfm) {
           statusBarItem.setText('Reformatting body for Gist...');
-          const preTransformed = this.gfmService.preTransform(finalContent, this.settings.stripCitations);
+          const preTransformed = this.gfmService.preTransform(
+            finalContent,
+            this.settings.stripCitations
+          );
           const reformatted = await this.aiService.reformatForGfm(
             preTransformed,
             this.settings.gfmPrompt,
             sanitizedTitle
           );
           if (reformatted) {
-            finalContent = this.gfmService.postTransform(reformatted, this.settings.cleanQAPrefix);
+            // Reconstruct the full prompt sent to AI for echo detection
+            let sentPrompt =
+              `${this.settings.gfmPrompt}\n\n${preTransformed}`.trim();
+            if (sanitizedTitle) {
+              sentPrompt +=
+                '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
+                sanitizedTitle +
+                '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+            }
+            sentPrompt +=
+              '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
+            finalContent = this.gfmService.postTransform(
+              reformatted,
+              this.settings.cleanQAPrefix,
+              sentPrompt
+            );
           }
         }
 
@@ -508,8 +537,12 @@ export default class TitleGeneratorPlugin extends Plugin {
           }
 
           // Gist auto-share after rename
-          const didGfmReformat = (this.settings.enableGfmReformatting || options?.forceGfm) && finalContent !== content;
-          const didGistShare = (this.settings.enableGistAutoShare || options?.forceGist) && this.settings.githubPat;
+          const didGfmReformat =
+            (this.settings.enableGfmReformatting || options?.forceGfm) &&
+            finalContent !== content;
+          const didGistShare =
+            (this.settings.enableGistAutoShare || options?.forceGist) &&
+            this.settings.githubPat;
           let gistUrlForNotice: string | undefined;
 
           if (didGistShare) {
@@ -537,7 +570,12 @@ export default class TitleGeneratorPlugin extends Plugin {
               }
 
               // Add frontmatter with gist_id, gist_url, and gist_filename
-              const frontmatterContent = this.updateGistFrontmatter(finalContent, gistResult.gistId!, gistResult.gistUrl!, sanitizedTitle + ext);
+              const frontmatterContent = this.updateGistFrontmatter(
+                finalContent,
+                gistResult.gistId!,
+                gistResult.gistUrl!,
+                sanitizedTitle + ext
+              );
               await this.app.vault.modify(
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 frontmatterContent
@@ -549,7 +587,9 @@ export default class TitleGeneratorPlugin extends Plugin {
               gistUrlForNotice = gistResult.gistUrl;
             } else {
               // ROLLBACK: Rename file back to original and restore original content
-              new Notice(`Gist publish failed after 3 attempts. Rolling back file rename.`);
+              new Notice(
+                `Gist publish failed after 3 attempts. Rolling back file rename.`
+              );
               await this.app.fileManager.renameFile(
                 this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
                 file.path
@@ -557,7 +597,11 @@ export default class TitleGeneratorPlugin extends Plugin {
               // Also rollback the content - remove gist frontmatter that was added
               await this.app.vault.modify(file, content);
               // Return failure
-              return { success: false, originalPath: file.path, error: gistResult.error };
+              return {
+                success: false,
+                originalPath: file.path,
+                error: gistResult.error,
+              };
             }
           }
 
@@ -611,14 +655,15 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
   }
 
-  
-  
   private getGistIdFromFrontmatter(content: string): string | undefined {
     const match = content.match(/^gist_id:\s*(.+)\s*$/m);
     if (match) {
       let id = match[1].trim();
       // Strip surrounding quotes if present
-      if ((id.startsWith('"') && id.endsWith('"')) || (id.startsWith("'") && id.endsWith("'"))) {
+      if (
+        (id.startsWith('"') && id.endsWith('"')) ||
+        (id.startsWith("'") && id.endsWith("'"))
+      ) {
         id = id.slice(1, -1);
       }
       return id;
@@ -631,7 +676,10 @@ export default class TitleGeneratorPlugin extends Plugin {
     if (match) {
       let url = match[1].trim();
       // Strip surrounding quotes if present
-      if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+      if (
+        (url.startsWith('"') && url.endsWith('"')) ||
+        (url.startsWith("'") && url.endsWith("'"))
+      ) {
         url = url.slice(1, -1);
       }
       return url;
@@ -644,7 +692,10 @@ export default class TitleGeneratorPlugin extends Plugin {
     if (match) {
       let filename = match[1].trim();
       // Strip surrounding quotes if present
-      if ((filename.startsWith('"') && filename.endsWith('"')) || (filename.startsWith("'") && filename.endsWith("'"))) {
+      if (
+        (filename.startsWith('"') && filename.endsWith('"')) ||
+        (filename.startsWith("'") && filename.endsWith("'"))
+      ) {
         filename = filename.slice(1, -1);
       }
       return filename;
@@ -658,7 +709,9 @@ export default class TitleGeneratorPlugin extends Plugin {
       const gistUrl = this.getGistUrlFromFrontmatter(content);
 
       if (!gistUrl) {
-        new Notice('No Gist link found in this file. Generate a title first to create a Gist.');
+        new Notice(
+          'No Gist link found in this file. Generate a title first to create a Gist.'
+        );
         return;
       }
 
@@ -712,7 +765,12 @@ export default class TitleGeneratorPlugin extends Plugin {
         : this.serializeFrontmatter(fm, content);
 
       // PATCH update to existing Gist - upload body only (no frontmatter)
-      const gistResult = await this.gistService.updateGist(body, newFilename, oldFilename, gistId);
+      const gistResult = await this.gistService.updateGist(
+        body,
+        newFilename,
+        oldFilename,
+        gistId
+      );
 
       if (gistResult.success) {
         // Update frontmatter with confirmed gist URL and ID
@@ -743,7 +801,11 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
   }
 
-  private parseFrontmatter(content: string): { fm: Map<string, string>; body: string; hasFrontmatter: boolean } {
+  private parseFrontmatter(content: string): {
+    fm: Map<string, string>;
+    body: string;
+    hasFrontmatter: boolean;
+  } {
     if (!content.startsWith('---')) {
       return { fm: new Map(), body: content, hasFrontmatter: false };
     }
@@ -755,7 +817,7 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
     const closingIndex = closingMatch.index!;
     const fmContent = afterOpening.slice(0, closingIndex);
-    const body = afterOpening.slice(closingIndex + 4); // skip \n---
+    const body = afterOpening.slice(closingIndex + 4).replace(/^\n+/, ''); // skip \n--- and trim leading newlines
     const fm = new Map<string, string>();
     for (const line of fmContent.split('\n')) {
       const colonIdx = line.indexOf(':');
@@ -763,7 +825,10 @@ export default class TitleGeneratorPlugin extends Plugin {
         const key = line.slice(0, colonIdx).trim();
         let val = line.slice(colonIdx + 1).trim();
         // Strip surrounding quotes
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
           val = val.slice(1, -1);
         }
         fm.set(key, val);
@@ -772,13 +837,25 @@ export default class TitleGeneratorPlugin extends Plugin {
     return { fm, body, hasFrontmatter: true };
   }
 
-  private serializeFrontmatter(fm: Map<string, string>, body: string, existingYamlPrefix: string = ''): string {
+  private serializeFrontmatter(
+    fm: Map<string, string>,
+    body: string,
+    existingYamlPrefix: string = ''
+  ): string {
     // Build frontmatter string preserving insertion order
     const lines: string[] = [];
     fm.forEach((val, key) => {
       // Quote values that need it (contain special chars)
-      const needsQuotes = val.includes(':') || val.includes('#') || val.includes('"') || val.includes("'") || val.startsWith(' ') || val.endsWith(' ');
-      lines.push(`${key}: ${needsQuotes ? `"${val.replace(/"/g, '\\"')}"` : val}`);
+      const needsQuotes =
+        val.includes(':') ||
+        val.includes('#') ||
+        val.includes('"') ||
+        val.includes("'") ||
+        val.startsWith(' ') ||
+        val.endsWith(' ');
+      lines.push(
+        `${key}: ${needsQuotes ? `"${val.replace(/"/g, '\\"')}"` : val}`
+      );
     });
     const fmStr = lines.join('\n');
     if (existingYamlPrefix !== '') {
@@ -789,7 +866,12 @@ export default class TitleGeneratorPlugin extends Plugin {
     return `---\n${fmStr}\n---\n${body}`;
   }
 
-  private updateGistFrontmatter(content: string, gistId: string, gistUrl: string, gistFilename: string): string {
+  private updateGistFrontmatter(
+    content: string,
+    gistId: string,
+    gistUrl: string,
+    gistFilename: string
+  ): string {
     // Auto-normalize if multiple frontmatter blocks detected (corrupted state)
     // Match --- followed by content, then --- (with optional preceding newline)
     const blockCount = (content.match(/---[\s\S]*?---/g) || []).length;
@@ -805,26 +887,14 @@ export default class TitleGeneratorPlugin extends Plugin {
     // Trim leading newlines from body to prevent blank line accumulation during updates.
     // The newline after closing --- is formatting, not content, so it should not be preserved.
     const trimmedBody = body.replace(/^\n+/, '');
-    if (!hasFrontmatter) {
-      return this.serializeFrontmatter(fm, trimmedBody);
-    }
-    // Build yamlPrefix WITHOUT existing gist fields (they're replaced via fm.set)
-    const afterOpening = workingContent.slice(3);
-    const closingMatch = afterOpening.match(/\n---/);
-    if (!closingMatch) {
-      return this.serializeFrontmatter(fm, trimmedBody);
-    }
-    const closingIndex = closingMatch.index!;
-    const existingFmLines = afterOpening.slice(0, closingIndex).split('\n');
-    const nonGistLines = existingFmLines.filter(line => {
-      const key = line.split(':')[0]?.trim();
-      return key && !['gist_id', 'gist_url', 'gist_filename'].includes(key);
-    });
-    const yamlPrefix = '---\n' + nonGistLines.join('\n');
-    return this.serializeFrontmatter(fm, trimmedBody, yamlPrefix);
+    return this.serializeFrontmatter(fm, trimmedBody);
   }
 
-  private normalizeFrontmatter(content: string): { content: string; normalized: boolean; blockCount: number } {
+  private normalizeFrontmatter(content: string): {
+    content: string;
+    normalized: boolean;
+    blockCount: number;
+  } {
     // Handle files with no frontmatter at all
     if (!content.startsWith('---')) {
       return { content, normalized: false, blockCount: 0 };
@@ -844,7 +914,10 @@ export default class TitleGeneratorPlugin extends Plugin {
           const key = line.slice(0, colonIdx).trim();
           let val = line.slice(colonIdx + 1).trim();
           // Strip surrounding quotes
-          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          if (
+            (val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'"))
+          ) {
             val = val.slice(1, -1);
           }
           if (key) {
@@ -865,19 +938,26 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
     // Body is everything after the last frontmatter block
     const body = content.slice(lastEnd).trimStart();
-    return { content: this.serializeFrontmatter(fm, body), normalized: true, blockCount };
+    return {
+      content: this.serializeFrontmatter(fm, body),
+      normalized: true,
+      blockCount,
+    };
   }
 
   /**
    * Check if required API keys are present, prompt user if missing
    * @returns Promise<boolean> true if ready to proceed, false if cancelled/prompted
    */
-  private async checkAndPromptForKeys(needsGist: boolean = false): Promise<boolean> {
-    const aiKeyMissing = !this.settings.openAiApiKey &&
-                         !this.settings.anthropicApiKey &&
-                         !this.settings.googleApiKey &&
-                         !this.settings.openRouterApiKey &&
-                         !this.settings.kimiApiKey;
+  private async checkAndPromptForKeys(
+    needsGist: boolean = false
+  ): Promise<boolean> {
+    const aiKeyMissing =
+      !this.settings.openAiApiKey &&
+      !this.settings.anthropicApiKey &&
+      !this.settings.googleApiKey &&
+      !this.settings.openRouterApiKey &&
+      !this.settings.kimiApiKey;
     const gistMissing = needsGist && !this.settings.githubPat;
 
     if (!aiKeyMissing && !gistMissing) {
@@ -885,21 +965,27 @@ export default class TitleGeneratorPlugin extends Plugin {
     }
 
     return new Promise((resolve) => {
-      const modal = new ApiKeyPromptModal(this.app, this, { needsGist }, async (success) => {
-        if (success) {
-          await this.saveSettings();
-          // Re-check after save
-          const aiKeyNow = this.settings.openAiApiKey ||
-                           this.settings.anthropicApiKey ||
-                           this.settings.googleApiKey ||
-                           this.settings.openRouterApiKey ||
-                           this.settings.kimiApiKey;
-          const gistOkNow = !needsGist || !!this.settings.githubPat;
-          resolve(!!aiKeyNow && gistOkNow);
-        } else {
-          resolve(false);
+      const modal = new ApiKeyPromptModal(
+        this.app,
+        this,
+        { needsGist },
+        async (success) => {
+          if (success) {
+            await this.saveSettings();
+            // Re-check after save
+            const aiKeyNow =
+              this.settings.openAiApiKey ||
+              this.settings.anthropicApiKey ||
+              this.settings.googleApiKey ||
+              this.settings.openRouterApiKey ||
+              this.settings.kimiApiKey;
+            const gistOkNow = !needsGist || !!this.settings.githubPat;
+            resolve(!!aiKeyNow && gistOkNow);
+          } else {
+            resolve(false);
+          }
         }
-      });
+      );
       modal.open();
     });
   }
@@ -914,7 +1000,12 @@ class ApiKeyPromptModal extends Modal {
   private onComplete: (success: boolean) => void;
   private updateInputVisibility: () => void = () => {};
 
-  constructor(app: App, plugin: TitleGeneratorPlugin, options: { needsGist: boolean }, onComplete: (success: boolean) => void) {
+  constructor(
+    app: App,
+    plugin: TitleGeneratorPlugin,
+    options: { needsGist: boolean },
+    onComplete: (success: boolean) => void
+  ) {
     super(app);
     this.plugin = plugin;
     this.needsGist = options.needsGist;
@@ -1027,10 +1118,14 @@ class ApiKeyPromptModal extends Modal {
     // Helper to show/hide based on provider
     this.updateInputVisibility = () => {
       const provider = this.plugin.settings.aiProvider;
-      openaiSetting.settingEl.style.display = provider === 'openai' ? '' : 'none';
-      anthropicSetting.settingEl.style.display = provider === 'anthropic' ? '' : 'none';
-      googleSetting.settingEl.style.display = provider === 'google' ? '' : 'none';
-      openrouterSetting.settingEl.style.display = provider === 'openrouter' ? '' : 'none';
+      openaiSetting.settingEl.style.display =
+        provider === 'openai' ? '' : 'none';
+      anthropicSetting.settingEl.style.display =
+        provider === 'anthropic' ? '' : 'none';
+      googleSetting.settingEl.style.display =
+        provider === 'google' ? '' : 'none';
+      openrouterSetting.settingEl.style.display =
+        provider === 'openrouter' ? '' : 'none';
       kimiSetting.settingEl.style.display = provider === 'kimi' ? '' : 'none';
     };
     this.updateInputVisibility();
