@@ -27,6 +27,10 @@ export const AI_PROVIDERS: Record<
     name: 'Kimi',
     requiresApiKey: true,
   },
+  litellm: {
+    name: 'LiteLLM',
+    requiresApiKey: false,
+  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
@@ -46,6 +50,11 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   openRouterModel: 'openai/gpt-4o-mini',
   kimiModel: 'kimi-for-coding',
 
+  // LiteLLM
+  litellmBaseUrl: 'http://localhost:4000',
+  litellmApiKey: '',
+  litellmModel: '',
+
   // Google Thinking Settings
   googleThinkingLevel: 'OFF',
 
@@ -63,6 +72,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     google: { models: [], lastUpdated: 0 },
     openrouter: { models: [], lastUpdated: 0 },
     kimi: { models: [], lastUpdated: 0 },
+    litellm: { models: [], lastUpdated: 0 },
   },
   modelLoadingState: {
     openai: false,
@@ -70,6 +80,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     google: false,
     openrouter: false,
     kimi: false,
+    litellm: false,
   },
 
   // Title
@@ -429,8 +440,12 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
     }
 
-    // Model selection with reload button
-    this.renderModelSelection(containerEl, provider, providerInfo);
+    // Model selection with reload button (LiteLLM uses free text input instead)
+    if (provider === 'litellm') {
+      this.renderLiteLLMModelInput(containerEl);
+    } else {
+      this.renderModelSelection(containerEl, provider, providerInfo);
+    }
 
     // Google Gemini specific settings
     if (provider === 'google') {
@@ -506,6 +521,78 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     if (provider === 'openrouter') {
       this.renderOpenRouterSettings(containerEl);
     }
+
+    // LiteLLM specific settings
+    if (provider === 'litellm') {
+      new Setting(containerEl)
+        .setName('LiteLLM Base URL')
+        .setDesc('The base URL of your LiteLLM server. Trailing slashes will be stripped automatically.')
+        .addText((text) => {
+          text
+            .setPlaceholder('http://localhost:4000')
+            .setValue(this.plugin.settings.litellmBaseUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.litellmBaseUrl = value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // API Key input using Cancel/OK pattern
+      let textEl: any, cancelBtn: any, okBtn: any;
+      let initialValue = this.plugin.settings.litellmApiKey;
+      let currentValue = initialValue;
+
+      const apiKeySetting = new Setting(containerEl)
+        .setName('LiteLLM API Key')
+        .setDesc('Optional. Leave empty for local servers without authentication.');
+      apiKeySetting.addText((text) => {
+        textEl = text;
+        text.inputEl.type = 'password';
+        text
+          .setPlaceholder('Optional')
+          .setValue(initialValue)
+          .onChange((value) => {
+            currentValue = value;
+            const changed = currentValue !== initialValue;
+            cancelBtn.setDisabled(!changed);
+            okBtn.setDisabled(!changed);
+          });
+      });
+      apiKeySetting.addButton((btn) => {
+        cancelBtn = btn;
+        btn.setButtonText('Cancel').setDisabled(true).onClick(() => {
+          textEl.setValue(initialValue);
+          currentValue = initialValue;
+          cancelBtn.setDisabled(true);
+          okBtn.setDisabled(true);
+        });
+      });
+      apiKeySetting.addButton((btn) => {
+        okBtn = btn;
+        btn.setButtonText('OK').setDisabled(true).onClick(async () => {
+          this.plugin.settings.litellmApiKey = currentValue;
+          await this.plugin.saveSettings();
+          initialValue = currentValue;
+          cancelBtn.setDisabled(true);
+          okBtn.setDisabled(true);
+        });
+      });
+    }
+  }
+
+  private renderLiteLLMModelInput(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName('Model')
+      .setDesc('The LiteLLM model to use (e.g., ollama/llama3, bedrock/anthropic.claude-v3, gpt-4o).')
+      .addText((text) => {
+        text
+          .setPlaceholder('ollama/llama3')
+          .setValue(this.plugin.settings.litellmModel)
+          .onChange(async (value) => {
+            this.plugin.settings.litellmModel = value;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 
   private async renderModelSelection(
@@ -750,6 +837,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return !!settings.openRouterApiKey.trim();
       case 'kimi':
         return !!settings.kimiApiKey.trim();
+      case 'litellm':
+        return !!settings.litellmBaseUrl.trim() && !!settings.litellmModel.trim();
       default:
         return false;
     }

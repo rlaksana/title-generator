@@ -5,7 +5,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi' | 'litellm';
 
 /**
  * Provider configuration interface
@@ -294,6 +294,11 @@ export interface TitleGeneratorSettings {
   // Kimi Settings
   kimiApiKey: string;
   kimiModel: string;
+
+  // LiteLLM Settings
+  litellmBaseUrl: string;
+  litellmApiKey: string;
+  litellmModel: string;
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';

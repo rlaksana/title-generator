@@ -269,6 +269,51 @@ class OpenRouterStrategy implements AIProviderStrategy {
 }
 
 /**
+ * LiteLLM Strategy Implementation
+ * LiteLLM proxies multiple LLM backends through an OpenAI-compatible API.
+ */
+class LiteLLMStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+
+    // Normalize base URL: trim whitespace and strip trailing slashes
+    let baseUrl = settings.litellmBaseUrl.trim();
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+
+    const body: any = {
+      model: settings.litellmModel,
+      messages: [{ role: 'user', content: fullPrompt }],
+      temperature: settings.temperature,
+      max_tokens: settings.maxTitleLength * 4,
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Send Authorization header even if key is empty (local servers may ignore it)
+    headers['Authorization'] = `Bearer ${settings.litellmApiKey}`;
+
+    return {
+      url: `${baseUrl}/v1/chat/completions`,
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: OpenAIResponse): string {
+    return response.choices[0]?.message?.content?.trim() ?? '';
+  }
+}
+
+/**
  * A service class to handle all AI-powered title generation logic.
  * It uses the Strategy Pattern to handle different AI providers.
  */
@@ -284,6 +329,7 @@ export class AIService {
       google: new GoogleStrategy(),
       openrouter: new OpenRouterStrategy(),
       kimi: new KimiStrategy(),
+      litellm: new LiteLLMStrategy(),
     };
   }
 
@@ -412,6 +458,11 @@ export class AIService {
         model: settings.kimiModel,
         name: 'Kimi',
       },
+      litellm: {
+        key: settings.litellmApiKey,
+        model: settings.litellmModel,
+        name: 'LiteLLM',
+      },
     };
 
     const config = (keys as any)[provider];
@@ -420,7 +471,7 @@ export class AIService {
       return false;
     }
 
-    if (!config.key.trim()) {
+    if (!config.key.trim() && provider !== 'litellm') {
       new Notice(`${config.name} API key is not set.`, 8000);
       return false;
     }
@@ -428,6 +479,13 @@ export class AIService {
     if (!config.model) {
       new Notice(`${config.name} model is not selected.`, 8000);
       return false;
+    }
+
+    if (provider === 'litellm') {
+      if (!settings.litellmBaseUrl.trim()) {
+        new Notice('LiteLLM Base URL is not set.', 8000);
+        return false;
+      }
     }
 
     return true;
