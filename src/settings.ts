@@ -31,6 +31,10 @@ export const AI_PROVIDERS: Record<
     name: 'LiteLLM',
     requiresApiKey: false,
   },
+  minimax: {
+    name: 'MiniMax',
+    requiresApiKey: true,
+  },
 };
 
 export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
@@ -55,6 +59,10 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   litellmApiKey: '',
   litellmModel: '',
 
+  // MiniMax
+  minimaxApiKey: '',
+  minimaxModel: 'MiniMax-M2.7-highspeed',
+
   // Google Thinking Settings
   googleThinkingLevel: 'OFF',
 
@@ -73,6 +81,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     openrouter: { models: [], lastUpdated: 0 },
     kimi: { models: [], lastUpdated: 0 },
     litellm: { models: [], lastUpdated: 0 },
+    minimax: { models: [], lastUpdated: 0 },
   },
   modelLoadingState: {
     openai: false,
@@ -81,6 +90,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
     openrouter: false,
     kimi: false,
     litellm: false,
+    minimax: false,
   },
 
   // Title
@@ -644,6 +654,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       case 'kimi':
         modelName = 'kimiModel';
         break;
+      case 'minimax':
+        modelName = 'minimaxModel';
+        break;
       default:
         return; // Should not happen
     }
@@ -713,6 +726,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         break;
       case 'openrouter':
         modelName = 'openRouterModel';
+        break;
+      case 'minimax':
+        modelName = 'minimaxModel';
         break;
       default:
         return;
@@ -789,6 +805,9 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         break;
       case 'openrouter':
         modelName = 'openRouterModel';
+        break;
+      case 'minimax':
+        modelName = 'minimaxModel';
         break;
       default:
         return; // Should not happen
@@ -868,6 +887,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         return (
           !!settings.litellmBaseUrl.trim() && !!settings.litellmModel.trim()
         );
+      case 'minimax':
+        return !!settings.minimaxApiKey.trim();
       default:
         return false;
     }

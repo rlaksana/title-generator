@@ -81,6 +81,8 @@ export class ModelService {
         return this.queryOpenRouterModels(settings);
       case 'kimi':
         return this.queryKimiModels(settings);
+      case 'minimax':
+        return this.queryMinimaxModels(settings);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -215,6 +217,37 @@ export class ModelService {
 
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error('Invalid response format from Kimi API');
+    }
+
+    return data.data.map((model: any) => model.id).sort();
+  }
+
+  private async queryMinimaxModels(
+    settings: TitleGeneratorSettings
+  ): Promise<string[]> {
+    if (!settings.minimaxApiKey.trim()) {
+      throw new Error('MiniMax API key not set');
+    }
+
+    const response = await requestUrl({
+      url: 'https://api.minimax.io/anthropic/v1/models',
+      method: 'GET',
+      headers: {
+        'x-api-key': settings.minimaxApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `MiniMax API error (${response.status}): ${response.text}`
+      );
+    }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from MiniMax API');
     }
 
     return data.data.map((model: any) => model.id).sort();

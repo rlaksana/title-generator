@@ -227,6 +227,43 @@ class KimiStrategy implements AIProviderStrategy {
 }
 
 /**
+ * MiniMax Strategy Implementation
+ * MiniMax uses an Anthropic-compatible API endpoint.
+ */
+class MiniMaxStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+
+    const body: any = {
+      model: settings.minimaxModel,
+      messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: 8192,
+      temperature: settings.temperature,
+    };
+
+    return {
+      url: 'https://api.minimax.io/anthropic/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.minimaxApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: AnthropicResponse): string {
+    const textContent = response.content.find((c: any) => c.type === 'text');
+    return textContent?.text?.trim() ?? '';
+  }
+}
+
+/**
  * OpenRouter Strategy Implementation
  */
 class OpenRouterStrategy implements AIProviderStrategy {
@@ -324,6 +361,7 @@ export class AIService {
       openrouter: new OpenRouterStrategy(),
       kimi: new KimiStrategy(),
       litellm: new LiteLLMStrategy(),
+      minimax: new MiniMaxStrategy(),
     };
   }
 
@@ -466,6 +504,11 @@ export class AIService {
         key: settings.litellmApiKey,
         model: settings.litellmModel,
         name: 'LiteLLM',
+      },
+      minimax: {
+        key: settings.minimaxApiKey,
+        model: settings.minimaxModel,
+        name: 'MiniMax',
       },
     };
 

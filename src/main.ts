@@ -957,7 +957,8 @@ export default class TitleGeneratorPlugin extends Plugin {
       !this.settings.anthropicApiKey &&
       !this.settings.googleApiKey &&
       !this.settings.openRouterApiKey &&
-      !this.settings.kimiApiKey;
+      !this.settings.kimiApiKey &&
+      !this.settings.minimaxApiKey;
     const gistMissing = needsGist && !this.settings.githubPat;
 
     if (!aiKeyMissing && !gistMissing) {
@@ -978,7 +979,8 @@ export default class TitleGeneratorPlugin extends Plugin {
               this.settings.anthropicApiKey ||
               this.settings.googleApiKey ||
               this.settings.openRouterApiKey ||
-              this.settings.kimiApiKey;
+              this.settings.kimiApiKey ||
+              this.settings.minimaxApiKey;
             const gistOkNow = !needsGist || !!this.settings.githubPat;
             resolve(!!aiKeyNow && gistOkNow);
           } else {
@@ -1027,6 +1029,7 @@ class ApiKeyPromptModal extends Modal {
           .addOption('google', 'Google Gemini')
           .addOption('openrouter', 'OpenRouter')
           .addOption('kimi', 'Kimi')
+          .addOption('minimax', 'MiniMax')
           .setValue(this.plugin.settings.aiProvider)
           .onChange((value) => {
             this.plugin.settings.aiProvider = value as any;
@@ -1099,6 +1102,19 @@ class ApiKeyPromptModal extends Modal {
         });
       });
 
+    // MiniMax API Key
+    const minimaxSetting = new Setting(contentEl)
+      .setName('MiniMax API Key')
+      .setDesc('Required for MiniMax models')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-...';
+        text.setValue(this.plugin.settings.minimaxApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.minimaxApiKey = value;
+        });
+      });
+
     // GitHub PAT (only if needed)
     let gistSetting: Setting | null = null;
     if (this.needsGist) {
@@ -1127,6 +1143,8 @@ class ApiKeyPromptModal extends Modal {
       openrouterSetting.settingEl.style.display =
         provider === 'openrouter' ? '' : 'none';
       kimiSetting.settingEl.style.display = provider === 'kimi' ? '' : 'none';
+      minimaxSetting.settingEl.style.display =
+        provider === 'minimax' ? '' : 'none';
     };
     this.updateInputVisibility();
 
@@ -1149,7 +1167,8 @@ class ApiKeyPromptModal extends Modal {
             this.plugin.settings.anthropicApiKey ||
             this.plugin.settings.googleApiKey ||
             this.plugin.settings.openRouterApiKey ||
-            this.plugin.settings.kimiApiKey
+            this.plugin.settings.kimiApiKey ||
+            this.plugin.settings.minimaxApiKey
           );
           if (!hasAiKey) {
             new Notice('Please enter at least one AI API key');

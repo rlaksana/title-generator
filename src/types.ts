@@ -5,7 +5,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi' | 'litellm';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi' | 'litellm' | 'minimax';
 
 /**
  * Provider configuration interface
@@ -299,6 +299,10 @@ export interface TitleGeneratorSettings {
   litellmBaseUrl: string;
   litellmApiKey: string;
   litellmModel: string;
+
+  // MiniMax Settings
+  minimaxApiKey: string;
+  minimaxModel: string;
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
