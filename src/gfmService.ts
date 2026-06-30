@@ -206,8 +206,12 @@ export class GfmService {
       const trimmed = line.trim();
 
       if (skipUntilAnswer && trimmed.match(/^(?:A:|Answer:)\s*.+$/i)) {
-        // This is the answer line - include it and stop skipping
-        resultLines.push(line);
+        // This is the answer line - strip the prefix and stop skipping.
+        const stripped = line.replace(
+          /^(\s*)(?:A:|Answer:|Ans:)\s*/i,
+          '$1'
+        );
+        resultLines.push(stripped);
         skipUntilAnswer = false;
       } else if (skipUntilAnswer && trimmed === '') {
         // Skip blank lines before the answer
