@@ -432,19 +432,15 @@ export class GfmService {
 
     const normalizedCells = cells.map((cell) => {
       const trimmed = cell.trim();
-
-      // Already has alignment markers
-      if (trimmed.startsWith(':') || trimmed.endsWith(':')) {
-        // Normalize: ensure format is :---, :---:, or ---:
-        if (trimmed === ':') return ':---';
-        if (trimmed === ':') return ':---';
-        if (trimmed === '-:' || trimmed === ':' || trimmed === ':-') {
-          return trimmed.replace('-', '').replace(':', '') + '---';
-        }
-        return trimmed.replace(/\s/g, '');
-      }
-
-      // No alignment markers - default to left-aligned
+      // Already has alignment markers — normalize to canonical form.
+      if (trimmed === ':') return ':---';
+      if (trimmed === ':-') return ':---';
+      if (trimmed === '-:') return '---:';
+      if (/^:-+:$/.test(trimmed)) return ':---:';
+      if (/^:-+$/.test(trimmed)) return ':---';
+      if (/^-+:$/.test(trimmed)) return '---:';
+      if (/^-+$/.test(trimmed)) return '---';
+      // Default: left-aligned, plain dashes.
       return '---';
     });
 
