@@ -496,27 +496,42 @@ export default class TitleGeneratorPlugin extends Plugin {
             this.settings.gfmPrompt,
             sanitizedTitle
           );
-          if (reformatted) {
-            // Reconstruct the full prompt sent to AI for echo detection
-            let sentPrompt =
-              `${this.settings.gfmPrompt}\n\n${preTransformed}`.trim();
-            if (sanitizedTitle) {
-              sentPrompt +=
-                '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
-                sanitizedTitle +
-                '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
-            }
-            sentPrompt +=
-              '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
-            const transformedBody = this.gfmService.postTransform(
-              reformatted,
-              this.settings.cleanQAPrefix,
-              sentPrompt
+          if (!reformatted) {
+            // Fail-closed: GFM was requested but AI returned empty/errored.
+            // Do NOT rename the file, do NOT publish to Gist, do NOT silently
+            // fall back to the raw content.
+            statusBarItem.setText('');
+            const error = this.errorHandler.createGenerationError(
+              'GFM reformatting failed (AI call returned empty or errored). ' +
+                'File not renamed and not published. Please retry.'
             );
-            finalContent = frontmatter
-              ? `---\n${frontmatter}\n---\n${transformedBody}`
-              : transformedBody;
+            this.errorHandler.handleError(error);
+            return {
+              success: false,
+              originalPath: file.path,
+              error: error.message,
+            };
           }
+
+          // Reconstruct the full prompt sent to AI for echo detection
+          let sentPrompt =
+            `${this.settings.gfmPrompt}\n\n${preTransformed}`.trim();
+          if (sanitizedTitle) {
+            sentPrompt +=
+              '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
+              sanitizedTitle +
+              '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+          }
+          sentPrompt +=
+            '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
+          const transformedBody = this.gfmService.postTransform(
+            reformatted,
+            this.settings.cleanQAPrefix,
+            sentPrompt
+          );
+          finalContent = frontmatter
+            ? `---\n${frontmatter}\n---\n${transformedBody}`
+            : transformedBody;
         }
 
         const { dir, ext } = path.parse(file.path);
