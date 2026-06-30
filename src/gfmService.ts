@@ -230,8 +230,36 @@ export class GfmService {
    * Transform task lists to proper GFM syntax
    */
   transformTaskLists(content: string): string {
-    // Match various checkbox formats: [ ], [x], [X], ( ), (x), < >
-    return content.replace(/^(\s*)[-*+]?\s*\[([ xX])\]\s*/gm, '$1- [$2] ');
+    // Match various checkbox formats: [ ], [x], [X], ( ), (x), < >.
+    // Normalize all to canonical "- [x]" / "- [ ]" so downstream rendering is
+    // consistent and matches the comment's contract.
+    let result = content;
+    // Square brackets - explicit uppercase [X] normalized to lowercase [x]
+    result = result.replace(
+      /^(\s*)[-*+]?\s*\[X\]\s*/gm,
+      '$1- [x] '
+    );
+    // Square brackets - lowercase [x]
+    result = result.replace(
+      /^(\s*)[-*+]?\s*\[x\]\s*/gm,
+      '$1- [x] '
+    );
+    // Square brackets - empty [ ]
+    result = result.replace(
+      /^(\s*)[-*+]?\s*\[\s\]\s*/gm,
+      '$1- [ ] '
+    );
+    // Parens ( ) and (x)
+    result = result.replace(
+      /^(\s*)[-*+]?\s*\(([ xX])\)\s*/gm,
+      '$1- [$2] '
+    );
+    // Angle brackets < > and <x>
+    result = result.replace(
+      /^(\s*)[-*+]?\s*<([ xX])>\s*/gm,
+      '$1- [$2] '
+    );
+    return result;
   }
 
   /**
