@@ -372,6 +372,18 @@ export class GfmService {
             const normalized = this.normalizeTableSeparator(nextLine);
             result.push(normalized);
             i++; // Skip the separator line since we already processed it
+          } else {
+            // No separator present - inject one based on header column count.
+            // Split on `|`, drop the leading and trailing empty cells that
+            // result from the opening and closing `|`, count the real columns.
+            const headerCells = line
+              .split('|')
+              .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+            if (headerCells.length >= 2) {
+              const separator =
+                '| ' + headerCells.map(() => '---').join(' | ') + ' |';
+              result.push(separator);
+            }
           }
         }
       } else {
@@ -435,7 +447,17 @@ export class GfmService {
         if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
           tableRows.push(trimmed);
         } else {
-          // Table ended - validate and emit
+          // Table ended - validate column count and emit.
+          // Drop any body row whose `|` count differs from the header so a
+          // truncated/malformed row doesn't break the rendered table.
+          const headerRow = tableRows[0];
+          if (headerRow) {
+            const headerPipeCount = (headerRow.match(/\|/g) ?? []).length;
+            tableRows = tableRows.filter((row) => {
+              const rowPipeCount = (row.match(/\|/g) ?? []).length;
+              return rowPipeCount === headerPipeCount;
+            });
+          }
           for (const row of tableRows) {
             result.push(row);
           }
@@ -448,6 +470,14 @@ export class GfmService {
 
     // Emit remaining table rows
     if (inTable) {
+      const headerRow = tableRows[0];
+      if (headerRow) {
+        const headerPipeCount = (headerRow.match(/\|/g) ?? []).length;
+        tableRows = tableRows.filter((row) => {
+          const rowPipeCount = (row.match(/\|/g) ?? []).length;
+          return rowPipeCount === headerPipeCount;
+        });
+      }
       for (const row of tableRows) {
         result.push(row);
       }
