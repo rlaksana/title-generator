@@ -111,7 +111,13 @@ export class GfmService {
 
     const lines = result.split('\n');
     const filteredLines = lines.filter((line) => {
-      return !instructionPatterns.some((pattern) => pattern.test(line));
+      return !instructionPatterns.some((pattern) => {
+        // Clone the regex to avoid lastIndex state carrying across lines.
+        // With the `g` flag, the same RegExp object's lastIndex advances
+        // after each .test() call, which causes alternating matches to
+        // silently skip. Cloning is cheap and keeps the matcher deterministic.
+        return new RegExp(pattern.source, pattern.flags).test(line);
+      });
     });
 
     result = filteredLines.join('\n');
