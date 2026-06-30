@@ -490,14 +490,54 @@ export class GfmService {
    * Transform URLs to proper auto-link format
    */
   transformLinks(content: string): string {
-    // Ensure bare URLs in angle brackets are properly formatted (already linked)
-    // but also catch common patterns that might not auto-link
+    // Wrap bare URLs in angle brackets, but skip URLs inside fenced code
+    // blocks or inline code spans. Trim trailing punctuation (.,;:!?)
+    // so it stays outside the angle brackets.
+    const lines = content.split('\n');
+    const result: string[] = [];
+    let inFence = false;
+    let fenceMarker = '';
 
-    // Add angle brackets around URLs that aren't already in links or code
-    return content.replace(
-      /(?<![<\(])(https?:\/\/[^\s<>\[\]()"]+)(?![>\)\]])/g,
-      '<$1>'
-    );
+    for (const line of lines) {
+      const fenceMatch = line.match(/^(\s{0,3})(```+|~~~+)/);
+      if (!inFence && fenceMatch) {
+        inFence = true;
+        fenceMarker = fenceMatch[2][0].repeat(3);
+        result.push(line);
+        continue;
+      }
+      if (inFence) {
+        const closer = line.match(/^(\s{0,3})(```+|~~~+)\s*$/);
+        if (closer && closer[2][0] === fenceMarker[0]) {
+          inFence = false;
+          fenceMarker = '';
+        }
+        result.push(line);
+        continue;
+      }
+
+      // Outside fences: split on balanced inline-code spans and only transform
+      // segments that are NOT inside backticks.
+      const segments = line.split(/(`+)([^`]*?)\1/g);
+      const transformed = segments
+        .map((seg, i) => {
+          // i % 3 === 1 is the backtick delimiter itself; i % 3 === 2 is the
+          // content; everything else (i % 3 === 0) is outside any inline code.
+          if (i % 3 === 2) return seg;
+          return seg.replace(
+            /(?<![<\(\[])(https?:\/\/[^\s<>]+?)([.,;:!?]+)?(?=[\s>]|$)/g,
+            (match, url, trailing = '') => {
+              const cleanUrl = url.replace(/[.,;:!?]+$/, '');
+              const trail = url.slice(cleanUrl.length);
+              return `<${cleanUrl}>${trail}`;
+            }
+          );
+        })
+        .join('');
+      result.push(transformed);
+    }
+
+    return result.join('\n');
   }
 
   /**
