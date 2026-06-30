@@ -37,9 +37,14 @@ export function stripCitations(content: string): string {
   // 7. Trailing citation markers after punctuation: text.[1] -> text.
   result = result.replace(/\.\[\d+\]/g, '.');
 
-  // 8. Clean up excessive whitespace from removed citations
+  // 8. Clean up excessive whitespace from removed citations.
+  // IMPORTANT: do NOT collapse leading whitespace per line — that would destroy
+  // 4-space indented code blocks, ASCII alignment, table padding, and YAML list
+  // indentation. Only collapse horizontal whitespace runs and trim trailing
+  // whitespace per line.
+  result = result.replace(/[ \t]{2,}/g, ' ');
+  result = result.replace(/[ \t]+$/gm, '');
   result = result.replace(/\n{3,}/g, '\n\n');
-  result = result.replace(/ +/g, ' ');
 
   return result.trim();
 }
