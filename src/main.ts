@@ -481,12 +481,14 @@ export default class TitleGeneratorPlugin extends Plugin {
           this.validationService.sanitizeFilename(newTitle);
 
         let finalContent = content;
+        const { frontmatter, body: bodyWithoutFrontmatter } =
+          this.splitFrontmatter(content);
 
         // Reformat body to GFM if enabled (or forced by command)
         if (this.settings.enableGfmReformatting || options?.forceGfm) {
           statusBarItem.setText('Reformatting body for Gist...');
           const preTransformed = this.gfmService.preTransform(
-            finalContent,
+            bodyWithoutFrontmatter,
             this.settings.stripCitations
           );
           const reformatted = await this.aiService.reformatForGfm(
@@ -506,11 +508,14 @@ export default class TitleGeneratorPlugin extends Plugin {
             }
             sentPrompt +=
               '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
-            finalContent = this.gfmService.postTransform(
+            const transformedBody = this.gfmService.postTransform(
               reformatted,
               this.settings.cleanQAPrefix,
               sentPrompt
             );
+            finalContent = frontmatter
+              ? `---\n${frontmatter}\n---\n${transformedBody}`
+              : transformedBody;
           }
         }
 
@@ -799,6 +804,20 @@ export default class TitleGeneratorPlugin extends Plugin {
       statusBarItem.remove();
       new Notice(`Failed to update Gist: ${(error as Error).message}`);
     }
+  }
+
+  /**
+   * Split YAML frontmatter from body. Frontmatter is detected only at the
+   * very top of the file (anchored ^---\n), so a `---` separator that
+   * appears later in the body is left untouched.
+   */
+  private splitFrontmatter(content: string): {
+    frontmatter: string;
+    body: string;
+  } {
+    const match = content.match(/^---\n([\s\S]*?)\n---\n?/);
+    if (!match) return { frontmatter: '', body: content };
+    return { frontmatter: match[1], body: content.slice(match[0].length) };
   }
 
   private parseFrontmatter(content: string): {
