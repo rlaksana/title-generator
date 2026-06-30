@@ -853,7 +853,29 @@ export default class TitleGeneratorPlugin extends Plugin {
     const fmContent = afterOpening.slice(0, closingIndex);
     const body = afterOpening.slice(closingIndex + 4).replace(/^\n+/, ''); // skip \n--- and trim leading newlines
     const fm = new Map<string, string>();
+    // Strict key pattern: a YAML frontmatter key must start at column 0 with
+    // [A-Za-z0-9_-] followed by optional more word chars, then a colon. Any
+    // line that does NOT match this pattern is treated as the start of body
+    // content rather than a malformed frontmatter entry — this prevents the
+    // parser from accidentally absorbing prose like "Dengan model saat ini..."
+    // or table separators like `|: "--- | :--- | :--- |"` into the frontmatter
+    // map when the original file has already been corrupted.
+    const validKeyPattern = /^[A-Za-z0-9_-][A-Za-z0-9_.\- ]*:/;
+    let truncatedAt = fmContent.length;
     for (const line of fmContent.split('\n')) {
+      // Stop scanning as soon as we see a line that is clearly NOT a frontmatter
+      // entry: empty lines are tolerated, but any non-empty line without a
+      // valid `key:` shape means we've hit body content (likely due to a
+      // previously corrupted state).
+      if (line.trim() === '') continue;
+      if (!validKeyPattern.test(line)) {
+        truncatedAt = fmContent.indexOf(line);
+        break;
+      }
+    }
+    const validFmContent = truncatedAt === -1 ? fmContent : fmContent.slice(0, truncatedAt);
+    const bodyCorrection = truncatedAt === -1 ? '' : fmContent.slice(truncatedAt);
+    for (const line of validFmContent.split('\n')) {
       const colonIdx = line.indexOf(':');
       if (colonIdx > 0) {
         const key = line.slice(0, colonIdx).trim();
@@ -868,7 +890,18 @@ export default class TitleGeneratorPlugin extends Plugin {
         fm.set(key, val);
       }
     }
-    return { fm, body, hasFrontmatter: true };
+    const finalBody = bodyCorrection
+      ? `${bodyCorrection}\n${body}`
+      : body;
+    if (bodyCorrection) {
+      console.warn(
+        '[Title Generator] Detected corrupted frontmatter: content between ' +
+          'opening --- and the first valid key was treated as body, not ' +
+          'frontmatter. If your file was previously corrupted, this may ' +
+          'restore lost content. Please review the updated file.'
+      );
+    }
+    return { fm, body: finalBody, hasFrontmatter: true };
   }
 
   private serializeFrontmatter(
