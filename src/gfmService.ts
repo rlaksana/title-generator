@@ -256,9 +256,30 @@ export class GfmService {
     let codeBlockStart = -1;
     let codeBlockIndent = 0;
     let codeBlockContent: string[] = [];
+    let inFence = false;
+    let fenceMarker = '';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      // Fence detection: a pre-existing ``` or ~~~ fenced code block must be
+      // passed through verbatim — converting indented lines inside it would
+      // produce nested/duplicated fences.
+      const fenceMatch = line.match(/^(\s{0,3})(```+|~~~+)(.*)$/);
+      if (!inFence && fenceMatch) {
+        inFence = true;
+        fenceMarker = fenceMatch[2][0].repeat(3);
+        result.push(line);
+        continue;
+      }
+      if (inFence) {
+        const closerMatch = line.match(/^(\s{0,3})(```+|~~~+)\s*$/);
+        if (closerMatch && closerMatch[2][0] === fenceMarker[0]) {
+          inFence = false;
+          fenceMarker = '';
+        }
+        result.push(line);
+        continue;
+      }
       const leadingSpaces = line.match(/^(\s*)/)?.[1].length ?? 0;
 
       if (!inCodeBlock) {
