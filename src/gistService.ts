@@ -27,6 +27,21 @@ interface GistSettings {
 }
 
 /**
+ * Options for gist publish/update operations.
+ *
+ * skipDescription — PATCH only: omit `description` so Gist title is preserved.
+ * skipFilenameRename — PATCH only: omit `filename` rename so the Gist filename
+ *   is preserved.
+ *
+ * Both default to false (today's behavior). Add new fields here when callers
+ * need new toggle points.
+ */
+interface PublishOptions {
+  skipDescription?: boolean;
+  skipFilenameRename?: boolean;
+}
+
+/**
  * Service for publishing notes to GitHub Gist
  */
 export class GistService {
@@ -40,10 +55,11 @@ export class GistService {
   async publishToGist(
     content: string,
     filename: string,
-    existingGistId?: string
+    existingGistId?: string,
+    options?: PublishOptions
   ): Promise<GistPublishResult> {
     if (existingGistId) {
-      return this.updateExistingGist(content, filename, existingGistId);
+      return this.updateExistingGist(content, filename, existingGistId, options);
     }
 
     // Create new gist (same as before)
@@ -57,7 +73,8 @@ export class GistService {
   private async updateExistingGist(
     content: string,
     filename: string,
-    existingGistId: string
+    existingGistId: string,
+    options?: PublishOptions
   ): Promise<GistPublishResult> {
     let lastResult: GistPublishResult & { status?: number } = {
       success: false,
@@ -65,7 +82,7 @@ export class GistService {
     };
 
     for (let attempt = 1; attempt <= 3; attempt++) {
-      const result = await this.updateGist(content, filename, filename, existingGistId);
+      const result = await this.updateGist(content, filename, filename, existingGistId, options);
       lastResult = result;
 
       if (result.success) {
@@ -95,7 +112,7 @@ export class GistService {
           if (remoteFilenames.length === 1) {
             const remoteFilename = remoteFilenames[0];
             // Retry with the actual remote filename
-            const retryResult = await this.updateGist(content, filename, remoteFilename, existingGistId);
+            const retryResult = await this.updateGist(content, filename, remoteFilename, existingGistId, options);
             lastResult = retryResult;
 
             if (retryResult.success) {
@@ -250,9 +267,30 @@ export class GistService {
     content: string,
     newFilename: string,
     oldFilename: string,
-    gistId: string
+    gistId: string,
+    options?: PublishOptions
   ): Promise<GistPublishResult & { status?: number }> {
     const settings = this.getSettings();
+
+    // Build per-file entry. Skip `filename` rename when caller asks,
+    // or when old and new are identical (no-op rename is harmless but pointless).
+    const fileEntry: Record<string, unknown> = { content };
+    if (
+      !options?.skipFilenameRename &&
+      oldFilename !== newFilename
+    ) {
+      fileEntry.filename = newFilename;
+    }
+
+    // Build PATCH body. Skip `description` (a.k.a. Gist title) when caller asks.
+    const patchBody: Record<string, unknown> = {
+      files: {
+        [oldFilename]: fileEntry,
+      },
+    };
+    if (!options?.skipDescription) {
+      patchBody.description = newFilename;
+    }
 
     try {
       const response = await requestUrl({
@@ -264,12 +302,7 @@ export class GistService {
           'X-GitHub-Api-Version': '2022-11-28',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          description: newFilename,
-          files: {
-            [oldFilename]: { filename: newFilename, content },
-          },
-        }),
+        body: JSON.stringify(patchBody),
       });
 
       if (response.status === 200) {
