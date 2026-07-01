@@ -570,8 +570,14 @@ export default class TitleGeneratorPlugin extends Plugin {
             const existingGistId = this.getGistIdFromFrontmatter(finalContent);
 
             statusBarItem.setText('Publishing to Gist...');
+            // Gist always receives body only — spec line 22 (2026-05-04):
+            // "Gist content does NOT include frontmatter. Local file has frontmatter;
+            // Gist contains only the markdown body." Applies to both create-new
+            // (existingGistId undefined → POST) and update-existing (→ PATCH).
+            const { body: gistBody } = this.extractFrontmatterAndBody(finalContent);
+
             const gistResult = await this.gistService.publishToGist(
-              finalContent,
+              gistBody,
               sanitizedTitle + ext,
               existingGistId
             );
