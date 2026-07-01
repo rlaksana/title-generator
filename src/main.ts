@@ -775,11 +775,9 @@ export default class TitleGeneratorPlugin extends Plugin {
       // scan is the wrong tool here — we want body verbatim.
       const { body } = this.extractFrontmatterAndBody(content);
 
-      // Compute filenames. We don't rename the Gist on Update (per spec):
-      // pass newFilename === oldFilename so skipFilenameRename is a no-op
-      // even when caller forgets to set it.
+      // localBasename is what the Gist filename would be after rename, but
+      // Update Gist preserves the existing Gist filename via skipFilenameRename.
       const localBasename = file.basename + '.' + file.extension;
-      const oldFilename = gistFilename || localBasename;
       const newFilename = localBasename;
 
       const gistResult = await this.gistService.publishToGist(
