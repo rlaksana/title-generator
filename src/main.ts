@@ -759,7 +759,6 @@ export default class TitleGeneratorPlugin extends Plugin {
     try {
       const content = await this.app.vault.cachedRead(file);
       statusBarItem.setText('Updating Gist...');
-      statusBarItem.setText('Updating Gist...');
 
       const gistId = this.getGistIdFromFrontmatter(content);
       const gistFilename = this.getGistFilenameFromFrontmatter(content);
@@ -770,54 +769,52 @@ export default class TitleGeneratorPlugin extends Plugin {
         return;
       }
 
-      // Determine old and new filename
+      // Use anchored split-style extraction so multi-line YAML values
+      // (lists, nested objects, indented continuations) are not absorbed
+      // into or truncated out of the body. parseFrontmatter()'s key-by-key
+      // scan is the wrong tool here — we want body verbatim.
+      const { body } = this.extractFrontmatterAndBody(content);
+
+      // Compute filenames. We don't rename the Gist on Update (per spec):
+      // pass newFilename === oldFilename so skipFilenameRename is a no-op
+      // even when caller forgets to set it.
       const localBasename = file.basename + '.' + file.extension;
       const oldFilename = gistFilename || localBasename;
       const newFilename = localBasename;
 
-      // Prepare updated frontmatter BEFORE uploading to gist (preserves all non-gist fields)
-      const { fm, body, hasFrontmatter } = this.parseFrontmatter(content);
-      fm.set('gist_id', gistId);
-      fm.set('gist_url', '');
-      fm.set('gist_filename', newFilename);
-      const contentWithGistFields = hasFrontmatter
-        ? this.serializeFrontmatter(fm, body)
-        : this.serializeFrontmatter(fm, content);
-
-      // PATCH update to existing Gist - upload body only (no frontmatter)
-      const gistResult = await this.gistService.updateGist(
+      const gistResult = await this.gistService.publishToGist(
         body,
         newFilename,
-        oldFilename,
-        gistId
+        gistId,
+        { skipDescription: true, skipFilenameRename: true }
       );
 
       if (gistResult.success) {
-        // Update frontmatter with confirmed gist URL and ID
-        const updatedFrontmatter = this.updateGistFrontmatter(
-          contentWithGistFields,
-          gistResult.gistId!,
-          gistResult.gistUrl!,
-          newFilename
-        );
-        await this.app.vault.modify(file, updatedFrontmatter);
+        // Only rewrite local frontmatter if API response changed something.
+        // Avoid touching the file when nothing actually moved — this is the
+        // path that previously corrupted frontmatter on every Update.
+        const existingUrl = this.getGistUrlFromFrontmatter(content);
+        const urlChanged = !!gistResult.gistUrl && gistResult.gistUrl !== existingUrl;
+        const filenameChanged = gistFilename !== newFilename;
 
-        // Sync gistFileMap
-        this.settings.gistFileMap[gistResult.gistId!] = {
-          filename: newFilename,
-          path: file.path,
-        };
-        await this.saveSettings();
+        if (urlChanged || filenameChanged) {
+          const { fm } = this.parseFrontmatter(content);
+          fm.set('gist_url', gistResult.gistUrl!);
+          fm.set('gist_filename', newFilename);
+          const updatedContent = this.serializeFrontmatter(fm, body);
+          await this.app.vault.modify(file, updatedContent);
+        }
 
-        new Notice(`Gist updated: ${gistResult.gistUrl}`);
+        new Notice(`Gist updated: ${gistResult.gistUrl}`, 5000);
       } else {
-        new Notice(`Failed to update Gist: ${gistResult.error}`);
+        new Notice(`Gist update failed: ${gistResult.error ?? 'Unknown error'}`, 7000);
       }
-
       statusBarItem.remove();
     } catch (error) {
       statusBarItem.remove();
-      new Notice(`Failed to update Gist: ${(error as Error).message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      new Notice(`Gist update failed: ${errorMessage}`, 7000);
+      console.error('[Title Generator] Gist update error:', error);
     }
   }
 
