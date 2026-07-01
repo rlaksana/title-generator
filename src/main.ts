@@ -835,6 +835,31 @@ export default class TitleGeneratorPlugin extends Plugin {
     return { frontmatter: match[1], body: content.slice(match[0].length) };
   }
 
+  /**
+   * Extract the frontmatter block and the body using a simple anchored regex.
+   * Treats the frontmatter as opaque text — does NOT parse YAML fields.
+   *
+   * Use this for "send body only" flows: Gist update, Gist share body-only.
+   * Distinct from parseFrontmatter() which builds a Map for round-trip editing.
+   *
+   * @returns frontmatter = raw YAML text between --- lines (empty if none),
+   *          body = everything after closing ---,
+   *          hasFrontmatter = whether the regex matched
+   */
+  private extractFrontmatterAndBody(content: string): {
+    frontmatter: string;
+    body: string;
+    hasFrontmatter: boolean;
+  } {
+    const match = content.match(/^---\n([\s\S]*?)\n---\n?/);
+    if (!match) return { frontmatter: '', body: content, hasFrontmatter: false };
+    return {
+      frontmatter: match[1],
+      body: content.slice(match[0].length),
+      hasFrontmatter: true,
+    };
+  }
+
   private parseFrontmatter(content: string): {
     fm: Map<string, string>;
     body: string;
