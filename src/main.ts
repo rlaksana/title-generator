@@ -469,11 +469,8 @@ export default class TitleGeneratorPlugin extends Plugin {
     statusBarItem.setText('Generating title...');
 
     try {
-      // Validate content before processing
-      const sanitizedContent = this.validationService.sanitizeInput(content);
-
       this.logger.debug(`Generating title for file: ${file.path}`);
-      const newTitle = await this.aiService.generateTitle(sanitizedContent);
+      const newTitle = await this.aiService.generateTitle(content);
 
       if (newTitle) {
         // Sanitize the generated title
