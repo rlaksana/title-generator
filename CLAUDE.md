@@ -4,7 +4,8 @@
 - `npm run build` — TypeScript check + esbuild (runs `tsc --noEmit --skipLibCheck`)
 - `npm run lint` — BROKEN (ESLint v10 config mismatch); do NOT use
 - ESLint uses old `.eslintrc` format incompatible with installed ESLint 10; linting unavailable until migrated
-- `node test-gfm-tables.test.js` — regression test for the GFM table-separator fix. Self-contained: esbuild + VM, no build artifacts, no `obsidian` import required.
+- `node test-gfm-tables.test.js` — regression for the GFM table-separator fix (4 cases). Self-contained: esbuild + VM, no build artifacts, no `obsidian` import.
+- `node test-gfm-paste.test.js` — regression for the D+guardrail pipeline (14 cases): `postTransform` minimal behavior (preserves `## References`, `Output:` lines, smart quotes, HTML entities) + `validateGfmOutput` guards. Same self-contained pattern as test-gfm-tables.
 - **Git push rejection**: Remote auto-version-bump creates new commits; always pull --rebase before push
 
 ## Git Workflow
@@ -16,7 +17,7 @@
 
 ## Code Architecture
 - **AI Service**: Strategy Pattern — `AIService` dispatches to `OpenAI`/`Anthropic`/`Google`/`OpenRouter` strategy classes
-- **GFM Feature**: Pre-transform (regex) → AI refinement → Post-transform (compliance)
+- **Paste pipeline (D+guardrail, post-F3)**: `splitFrontmatter` → AI `reformatForGfm` (with UUID sentinel extraction) → `validateGfmOutput` (5 guards) → `postTransform` (collapse blanks only) → `.bak.<ts>` snapshot before `vault.modify`. Pre-transform regex pass is intentionally NOT called from paste path (see F2 in `docs/superpowers/specs/2026-07-09-paste-content-preservation-D-plus-guardrail-design.md`).
 - **GFM fence state machine**: `gfmService.transformCodeBlocks` and `gfmService.transformLinks` track `inFence` / `fenceMarker` so existing fenced blocks (opening `\`\`\`` or `~~~` lines) are passed through verbatim. Indented-code → fenced conversion and URL wrapping only run OUTSIDE fences. Inline code spans (balanced backticks) are skipped by URL transform too.
 - **GFM table-separator state machine**: `gfmService.transformTables` tracks `inTable` across lines so a separator row is emitted exactly once per table (after the header), not after every pipe-row. Body rows pass through verbatim. Treat this state-machine as the canonical pattern for any per-row transform that risks double-emission.
 - **GFM fail-closed**: When `enableGfmReformatting` or `forceGfm` is set and `aiService.reformatForGfm()` returns empty/throws, `processSingleFile` short-circuits with an error notice — no rename, no Gist publish, no silent fallback to raw content. This is the contract for the "Paste & Share to Gist" command path.
@@ -37,6 +38,29 @@ There are TWO parsers and they are not interchangeable:
 
 **Rule of thumb:** use `splitFrontmatter` for the AI-reformat path (preserves everything), use `parseFrontmatter` only for the Gist metadata round-trip where you need a `Map`.
 
+## D+Guardrail Pattern (canonical for AI body reformat)
+
+Any new command that calls AI to rewrite note body MUST follow this 3-layer pattern:
+
+1. **Sentinel extraction** (deterministic boundary)
+   - `aiService.reformatForGfm` injects `<<GFM_BODY_START_<uuid>>>...<<GFM_BODY_END_<uuid>>>>` markers into the prompt and extracts substring between them in the response.
+   - UUID generated per call (uses `crypto.randomUUID`, fallback to RFC4122-ish Math.random).
+   - If either marker missing in response → return empty (caller is fail-closed on empty).
+   - **Why:** prose-level "Output ONLY..." compliance is unreliable under token pressure; sentinels convert a probabilistic boundary into a deterministic one.
+
+2. **Structural validation** (5 guards in `gfmService.validateGfmOutput`)
+   - Fail-closed: sentinel leak / fence parity (odd ``` count) / mid-list (dangling `- ` marker) / length delta (< 50% of input) / empty output.
+   - Warn-only: heading-shrunk (AI legitimately merges headings).
+   - Token pre-check at 24000 char (≈ 6000 tokens): skip AI entirely, use raw body.
+
+3. **Snapshot recovery** (`main.ts.snapshotBeforeModify`)
+   - Writes `<basename>.bak.<ISO-timestamp>` BEFORE `vault.modify`. NO `.md` suffix on `.bak` file so Obsidian does not index it.
+   - Retention: overwrite-only (1 snapshot per basenote).
+   - Failure to snapshot is logged but does not block modify (graceful degradation).
+   - Success Notice includes snapshot basename so user knows recovery path exists.
+
+Reference: `docs/superpowers/specs/2026-07-09-paste-content-preservation-D-plus-guardrail-design.md`
+
 ## Source Files
 | File | Purpose |
 |------|---------|
@@ -44,11 +68,11 @@ There are TWO parsers and they are not interchangeable:
 | `src/aiService.ts` | AI title generation & GFM reformat calls |
 | `src/modelService.ts` | Model catalog / capability registry per provider (used by `aiService` strategy dispatch) |
 | `src/errorHandler.ts` | Centralized `ErrorHandler` + typed error factories used across `main.ts`, `aiService`, `gfmService`, etc. |
-| `src/validation.ts` | Input/filename sanitization + validation (used before AI calls and before file renames) |
+| `src/validation.ts` | API key / model / prompt validation + filename sanitization. The legacy `sanitizeInput` method still exists for backward compat but is NOT called from the paste path (removed in F1). Filename sanitization (`sanitizeFilename`, `truncateTitle`) is still used for rename. |
 | `src/logger.ts` | Lightweight logger wired into `main.ts`; respects `LogLevel` setting |
 | `src/constants.ts` | Shared string constants, default prompts, error messages |
 | `src/utils.ts` | Path/string helpers shared across services |
-| `src/gfmService.ts` | GFM transformation — fence-aware pre/post, task list variants `[x]/(x)/<x>`, Q&A prefix strip, table separator injection, code-block fence tracking, link transform context-aware |
+| `src/gfmService.ts` | Two roles: (1) `validateGfmOutput` — 5-guard structural validation of AI body output; (2) `postTransform` — minimal collapse-blank-lines only. Legacy exports (`preTransform`, `transformCodeBlocks`, `validateTables`, etc.) are still available but NOT called from paste path. `transformTables` is exercised by `test-gfm-tables.test.js`. |
 | `src/gistService.ts` | GitHub Gist publishing |
 | `src/citationCleanerService.ts` | Strip citation markers from AI output. Preserves leading indentation per line — does NOT collapse ` +` globally (would destroy 4-space code blocks, ASCII alignment, YAML list indent). |
 | `src/settings.ts` | Settings UI tab + `DEFAULT_SETTINGS` constant |
@@ -71,5 +95,5 @@ There are TWO parsers and they are not interchangeable:
 - Spec format: numbered findings from a static review → one task per finding, in priority order, with explicit verification (`npm run build`) per task.
 - Each fix is its own commit (`fix(gfm): <short description>`) so a regression can be reverted without losing unrelated fixes.
 - Two-stage review (spec compliance → code quality) catches real bugs (e.g., fence corruption, silent publish fallback).
-- `npm run build` is the primary verification; `node test-gfm-tables.test.js` is the only existing regression test (covers `transformTables`). When adding new GFM transforms, add a case here rather than relying solely on `npm run build`.
+- `npm run build` is the primary verification; `node test-gfm-tables.test.js` covers `transformTables` and `node test-gfm-paste.test.js` covers the D+guardrail pipeline (postTransform + validateGfmOutput). When adding new GFM transforms or AI body-rewrite logic, add a case to the matching test file rather than relying solely on `npm run build`.
 - **Auto-version-bump during SDD**: when executing multi-commit plans via `superpowers:subagent-driven-development` directly on `main` (no feature branch), `version-bump.mjs` runs after every commit and edits `dist/manifest.json`+`dist/versions.json`. After the plan finishes, the uncommitted dist files may show a version that no longer matches the latest local chore commit. Always `git pull --rebase` first — the remote's auto-bump commit (timestamped from your commits landing on the server) captures the correct version. Amend your local chore commit to a generic message like `chore: dist artifacts for N <topic> fix commits [skip ci]` to match what the diff actually contains.
