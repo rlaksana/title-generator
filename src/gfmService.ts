@@ -378,44 +378,59 @@ export class GfmService {
   }
 
   /**
-   * Transform tables to proper GFM syntax with alignment
+   * Transform tables to proper GFM syntax with alignment.
+   *
+   * Walks the input line-by-line, tracking whether we are inside a table.
+   * A separator row is only emitted when we encounter the header (the first
+   * row of a new table). Body rows are passed through verbatim — never
+   * followed by an injected separator, which previously corrupted valid GFM
+   * tables that already had a correct separator.
    */
   transformTables(content: string): string {
     const lines = content.split('\n');
     const result: string[] = [];
+    let inTable = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const trimmed = line.trim();
+      const isRow = trimmed.startsWith('|') && trimmed.endsWith('|');
 
-      // Check if this looks like a table row
-      if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      if (!inTable) {
+        if (!isRow) {
+          result.push(line);
+          continue;
+        }
+
+        // Header row of a new table — push it, then decide separator.
         result.push(line);
-
-        // Check if next line is a table separator
-        if (i + 1 < lines.length) {
-          const nextLine = lines[i + 1].trim();
-          // If it's a separator row with |---| format, check if it needs normalization
-          if (nextLine.match(/^\|[\s-:|<>]+\|$/)) {
-            // Normalize the separator
-            const normalized = this.normalizeTableSeparator(nextLine);
-            result.push(normalized);
-            i++; // Skip the separator line since we already processed it
-          } else {
-            // No separator present - inject one based on header column count.
-            // Split on `|`, drop the leading and trailing empty cells that
-            // result from the opening and closing `|`, count the real columns.
-            const headerCells = line
-              .split('|')
-              .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-            if (headerCells.length >= 2) {
-              const separator =
-                '| ' + headerCells.map(() => '---').join(' | ') + ' |';
-              result.push(separator);
-            }
+        const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+        if (nextLine.match(/^\|[\s-:|<>]+\|$/)) {
+          // Existing separator: normalize and consume the next line.
+          result.push(this.normalizeTableSeparator(nextLine));
+          i++;
+        } else {
+          // Missing separator: inject one matching the header column count.
+          // Split on `|`, drop the leading and trailing empty cells that
+          // result from the opening and closing `|`, count real columns.
+          const headerCells = line
+            .split('|')
+            .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+          if (headerCells.length >= 2) {
+            result.push(
+              '| ' + headerCells.map(() => '---').join(' | ') + ' |'
+            );
           }
         }
+        inTable = true;
       } else {
-        result.push(line);
+        // Inside a table: body rows pass through; anything else ends it.
+        if (isRow) {
+          result.push(line);
+        } else {
+          inTable = false;
+          result.push(line);
+        }
       }
     }
 

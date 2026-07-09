@@ -25,3 +25,7 @@ data.json
 .claude/
 obsidian-title-generator.code-workspace
 .grepai/
+
+# codegraph MCP watcher state — local-only scratch, do not version
+.codegraph/
+.codegraphignore
