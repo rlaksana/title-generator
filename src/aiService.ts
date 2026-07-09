@@ -1,5 +1,28 @@
 import { Notice, requestUrl } from 'obsidian';
 import { sanitizeFilename, truncateTitle } from './utils';
+
+/**
+ * Generate a UUID for sentinel boundaries. Uses crypto.randomUUID when
+ * available (modern browsers + Node 19+), falls back to a Math.random
+ * based implementation for older targets. Sentinel collision is theoretically
+ * possible with Math.random fallback but practically negligible for the
+ * single-call-per-process usage here.
+ */
+function generateUuid(): string {
+  if (
+    typeof globalThis !== 'undefined' &&
+    typeof (globalThis as any).crypto?.randomUUID === 'function'
+  ) {
+    return (globalThis as any).crypto.randomUUID();
+  }
+  // Fallback: 32 hex chars, RFC4122-ish but not strictly compliant.
+  // Sentinel parsing only needs uniqueness within one call, not global uniqueness.
+  return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 import type {
   TitleGeneratorSettings,
   AIProviderStrategy,
@@ -423,7 +446,18 @@ export class AIService {
   }
 
   /**
-   * Reformat content to be GitHub Flavored Markdown (GFM) compliant
+   * Reformat content to be GitHub Flavored Markdown (GFM) compliant.
+   *
+   * Uses a UUID-bracketed sentinel boundary to make body extraction deterministic.
+   * The AI is asked to wrap its output between `<<GFM_BODY_START_<uuid>>>`
+   * and `<<GFM_BODY_END_<uuid>>>` markers. We then extract the substring
+   * between those exact markers. If either marker is missing in the response
+   * (truncation, refusal, hallucination) the call returns empty string —
+   * caller is fail-closed on empty.
+   *
+   * Why sentinel instead of relying on the model's prose compliance with
+   * "Output ONLY the transformed content": prose compliance is unreliable
+   * under token pressure; sentinels are deterministic and parseable.
    */
   async reformatForGfm(
     noteContent: string,
@@ -437,6 +471,10 @@ export class AIService {
     }
 
     try {
+      const uuid = generateUuid();
+      const startMarker = `<<GFM_BODY_START_${uuid}>>`;
+      const endMarker = `<<GFM_BODY_END_${uuid}>>`;
+
       let prompt = `${gfmPrompt}\n\n${noteContent}`.trim();
       if (title) {
         prompt +=
@@ -444,10 +482,25 @@ export class AIService {
           title +
           '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
       }
-      // Anti-echoing guard: explicitly tell the model not to repeat instructions
+      // Sentinel instruction: tells the model to wrap output in deterministic
+      // boundary markers. Caller extracts between them.
       prompt +=
-        '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations or summaries.';
-      return await this.callAI(prompt, '');
+        `\n\nCRITICAL: Wrap your entire output between these exact two markers ` +
+        `and nothing else:\n${startMarker}\n${endMarker}\n` +
+        `Do NOT repeat the instructions. Do NOT add explanations before or after.`;
+
+      const rawResponse = await this.callAI(prompt, '');
+      if (!rawResponse) return '';
+
+      // Extract body between sentinels. Fail-closed if either marker missing.
+      const startIdx = rawResponse.indexOf(startMarker);
+      const endIdx = rawResponse.indexOf(endMarker);
+      if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+        return '';
+      }
+      return rawResponse
+        .substring(startIdx + startMarker.length, endIdx)
+        .trim();
     } catch (error) {
       this.handleError(error, settings);
       return '';

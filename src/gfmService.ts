@@ -40,46 +40,35 @@ export class GfmService {
   }
 
   /**
-   * Post-transform: ensure GFM compliance after AI processing
-   * @param cleanQAPrefix - if true, also strip Q&A prefix patterns from output
-   * @param sentPrompt - the prompt sent to the AI, used to detect prompt echoing
+   * Post-transform: minimal cleanup of AI output.
+   *
+   * The original postTransform ran 7 regex passes (stripInstructions,
+   * stripPromptEcho, stripQaPrefix, transformCodeBlocks, validateTables,
+   * sanitizeHtml, transformLinks) on the AI's body output. Each pass was
+   * a false-positive vector that could destroy legitimate content:
+   *   - stripInstructions matches /^Format the following.*$/gim
+   *   - stripPromptEcho matches /^Output\b/i, /^Format\b/i etc.
+   *   - stripQaPrefix matches Q:/Question: lines (interview transcripts)
+   *   - validateTables drops rows whose | count differs from header
+   *
+   * Content preservation is now handled by:
+   *   - aiService.reformatForGfm injects UUID-bracketed sentinel markers
+   *     and extracts body substring between them (deterministic boundary)
+   *   - validateGfmOutput() guards against truncation / mid-fence / mid-table
+   *
+   * This method now only collapses 3+ blank lines to 2. The second/third
+   * arguments are kept for backward compatibility with callers but ignored.
+   *
+   * @param content - body returned by AI (already sentinel-extracted)
+   * @param _cleanQAPrefix - deprecated, ignored
+   * @param _sentPrompt - deprecated, ignored
    */
   postTransform(
     content: string,
-    cleanQAPrefix: boolean = true,
-    sentPrompt?: string
+    _cleanQAPrefix: boolean = true,
+    _sentPrompt?: string
   ): string {
-    let result = content;
-
-    // Strip leaked instructions from AI output
-    result = this.stripInstructions(result);
-
-    // Strip prompt echoing if we know what was sent
-    if (sentPrompt) {
-      result = this.stripPromptEcho(result, sentPrompt);
-    }
-
-    // Strip Q&A prefix from AI output (only if enabled)
-    if (cleanQAPrefix) {
-      result = this.stripQaPrefix(result);
-    }
-
-    // Convert remaining indented code to fenced code blocks
-    result = this.transformCodeBlocks(result);
-
-    // Ensure proper table syntax
-    result = this.validateTables(result);
-
-    // Sanitize dangerous HTML tags while preserving safe ones
-    result = this.sanitizeHtml(result);
-
-    // Ensure URLs are properly formatted for auto-linking
-    result = this.transformLinks(result);
-
-    // Final cleanup: normalize excessive blank lines
-    result = result.replace(/\n{3,}/g, '\n\n');
-
-    return result;
+    return content.replace(/\n{3,}/g, '\n\n');
   }
 
   /**
