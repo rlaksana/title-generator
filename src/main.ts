@@ -483,52 +483,59 @@ export default class TitleGeneratorPlugin extends Plugin {
 
         // Reformat body to GFM if enabled (or forced by command)
         if (this.settings.enableGfmReformatting || options?.forceGfm) {
-          statusBarItem.setText('Reformatting body for Gist...');
-          const preTransformed = this.gfmService.preTransform(
-            bodyWithoutFrontmatter,
-            this.settings.stripCitations
-          );
-          const reformatted = await this.aiService.reformatForGfm(
-            preTransformed,
-            this.settings.gfmPrompt,
-            sanitizedTitle
-          );
-          if (!reformatted) {
-            // Fail-closed: GFM was requested but AI returned empty/errored.
-            // Do NOT rename the file, do NOT publish to Gist, do NOT silently
-            // fall back to the raw content.
-            statusBarItem.setText('');
-            const error = this.errorHandler.createGenerationError(
-              'GFM reformatting failed (AI call returned empty or errored). ' +
-                'File not renamed and not published. Please retry.'
+          // Token pre-check: skip AI reformat for very long bodies to avoid
+          // mid-response truncation. 24000 chars ≈ 6000 tokens input, leaves
+          // ~2000 tokens for output within typical 8192-token budget.
+          const REFORMAT_SKIP_THRESHOLD = 24000;
+          if (bodyWithoutFrontmatter.length > REFORMAT_SKIP_THRESHOLD) {
+            new Notice(
+              `Body too long for AI GFM reformat (${bodyWithoutFrontmatter.length} > ${REFORMAT_SKIP_THRESHOLD} chars). Skipping reformat — file saved with raw content.`,
+              8000
             );
-            this.errorHandler.handleError(error);
-            return {
-              success: false,
-              originalPath: file.path,
-              error: error.message,
-            };
-          }
+          } else {
+            statusBarItem.setText('Reformatting body for Gist...');
+            const reformatted = await this.aiService.reformatForGfm(
+              bodyWithoutFrontmatter,
+              this.settings.gfmPrompt,
+              sanitizedTitle
+            );
+            if (!reformatted) {
+              // Fail-closed: GFM was requested but AI returned empty/errored.
+              // Do NOT rename the file, do NOT publish to Gist, do NOT silently
+              // fall back to the raw content.
+              statusBarItem.setText('');
+              const error = this.errorHandler.createGenerationError(
+                'GFM reformatting failed (AI call returned empty or errored). ' +
+                  'File not renamed and not published. Please retry.'
+              );
+              this.errorHandler.handleError(error);
+              return {
+                success: false,
+                originalPath: file.path,
+                error: error.message,
+              };
+            }
 
-          // Reconstruct the full prompt sent to AI for echo detection
-          let sentPrompt =
-            `${this.settings.gfmPrompt}\n\n${preTransformed}`.trim();
-          if (sanitizedTitle) {
+            // Reconstruct the full prompt sent to AI for echo detection
+            let sentPrompt =
+              `${this.settings.gfmPrompt}\n\n${bodyWithoutFrontmatter}`.trim();
+            if (sanitizedTitle) {
+              sentPrompt +=
+                '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
+                sanitizedTitle +
+                '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+            }
             sentPrompt +=
-              '\n\nIMPORTANT: Before reformatting, check if the beginning of the content duplicates the title "' +
-              sanitizedTitle +
-              '". If yes, remove the duplicate lines from the start of the content first, then reformat.';
+              '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
+            const transformedBody = this.gfmService.postTransform(
+              reformatted,
+              this.settings.cleanQAPrefix,
+              sentPrompt
+            );
+            finalContent = frontmatter
+              ? `---\n${frontmatter}\n---\n${transformedBody}`
+              : transformedBody;
           }
-          sentPrompt +=
-            '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
-          const transformedBody = this.gfmService.postTransform(
-            reformatted,
-            this.settings.cleanQAPrefix,
-            sentPrompt
-          );
-          finalContent = frontmatter
-            ? `---\n${frontmatter}\n---\n${transformedBody}`
-            : transformedBody;
         }
 
         const { dir, ext } = path.parse(file.path);
