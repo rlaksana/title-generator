@@ -26,6 +26,10 @@ data.json
 obsidian-title-generator.code-workspace
 .grepai/
 
+# Project-level CLAUDE.md is versioned (ships with the repo); only
+# .claude/ is machine-local. If a nested CLAUDE.md is ever needed,
+# add it explicitly via `!path/to/CLAUDE.md`.
+
 # codegraph MCP watcher state — local-only scratch, do not version
 .codegraph/
 .codegraphignore
