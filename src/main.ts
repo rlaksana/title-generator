@@ -584,10 +584,18 @@ export default class TitleGeneratorPlugin extends Plugin {
 
           // Update content if it was modified
           if (finalContent !== content) {
+            // F5: snapshot original content before destructive modify.
+            // Recovery path: rename <basename>.bak.<ts> back to <basename>.md
+            // if the AI rewrite corrupted content. .bak files have no .md
+            // suffix so Obsidian does not index them.
+            const snapPath = await this.snapshotBeforeModify(file, content);
             await this.app.vault.modify(
               this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
               finalContent
             );
+            if (snapPath) {
+              this.logger.info(`Recovery snapshot written: ${snapPath}`);
+            }
           }
 
           // Gist auto-share after rename
@@ -680,7 +688,12 @@ export default class TitleGeneratorPlugin extends Plugin {
         } else {
           // Update content even if filename didn't change
           if (finalContent !== content) {
+            // F5: same snapshot for the in-place modify path.
+            const snapPath = await this.snapshotBeforeModify(file, content);
             await this.app.vault.modify(file, finalContent);
+            if (snapPath) {
+              this.logger.info(`Recovery snapshot written: ${snapPath}`);
+            }
           }
 
           new Notice(`Generated title is the same as the current one.`);
@@ -712,6 +725,37 @@ export default class TitleGeneratorPlugin extends Plugin {
       };
     } finally {
       statusBarItem.remove();
+    }
+  }
+
+  /**
+   * Write a recovery snapshot of the original content before any destructive
+   * modify. File is named `<basename>.bak.<timestamp>` (NO .md suffix) so
+   * Obsidian does not index it as Markdown, but it remains on disk for manual
+   * recovery via rename.
+   *
+   * Retention: overwrites any existing .bak.<ts> for this basenote. Keeps
+   * only the most recent snapshot. Trade-off accepted: better than zero
+   * recovery path; user can compare current vs .bak and rename to restore.
+   *
+   * Errors are swallowed (logged via this.logger). A failed snapshot must
+   * not block the modify — the operation proceeds, just without recovery.
+   */
+  private async snapshotBeforeModify(
+    file: TFile,
+    content: string
+  ): Promise<string | undefined> {
+    try {
+      const dir = file.parent?.path ?? '';
+      const base = file.basename;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const bakName = `${base}.bak.${ts}`;
+      const bakPath = normalizePath(dir ? `${dir}/${bakName}` : bakName);
+      await this.app.vault.adapter.write(bakPath, content);
+      return bakPath;
+    } catch (err) {
+      this.logger.warn('snapshotBeforeModify failed', { error: String(err) });
+      return undefined;
     }
   }
 
