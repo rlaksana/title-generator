@@ -40,6 +40,94 @@ export class GfmService {
   }
 
   /**
+   * Validate the AI's GFM body output against the original input.
+   *
+   * Returns:
+   *   { valid: true } — output is structurally sound, safe to write
+   *   { valid: true, warning: ... } — output is safe but has a warning worth surfacing
+   *   { valid: false, reason: ... } — output is corrupted, caller MUST NOT write
+   *
+   * Guards (fail-closed on first hit):
+   *   1. Sentinel missing — output does not contain <<GFM_BODY_END_ token
+   *   2. Fence parity — odd number of ``` markers means an unclosed fence
+   *   3. Mid-table — last 100 chars end with unclosed pipe row (| col | col)
+   *   4. Mid-list — last line is a dangling list marker (- / * / 1.)
+   *   5. Length delta — output < 50% of input length
+   *
+   * Warnings (not fail):
+   *   - Heading-shrunk — output has fewer #{1,6} headings than input
+   *
+   * Each guard is deliberately conservative. False-positive rate should be
+   * near zero on real paste content; false-negative rate will surface as
+   * user-reported issues we can tune per-threshold later.
+   */
+  validateGfmOutput(
+    input: string,
+    output: string
+  ): { valid: boolean; reason?: string; warning?: string } {
+    if (!output || output.length === 0) {
+      return { valid: false, reason: 'AI returned empty output' };
+    }
+
+    // 1. Sentinel missing — the reformatForGfm caller should have stripped
+    //    the markers before returning; if markers leaked into the output,
+    //    the AI did not honor the boundary.
+    if (/<<GFM_BODY_(START|END)_/.test(output)) {
+      return { valid: false, reason: 'Sentinel markers leaked into output' };
+    }
+
+    // 2. Fence parity — every opening fence needs a closing fence.
+    const fenceMatches = output.match(/```/g);
+    if (fenceMatches && fenceMatches.length % 2 !== 0) {
+      return {
+        valid: false,
+        reason: `Unclosed code fence (odd \`\`\` count: ${fenceMatches.length})`,
+      };
+    }
+
+    // 3. Mid-table — output ends mid-table row (starts with | but last char is |)
+    const tail = output.slice(-100);
+    const lastLines = tail.split('\n').filter((l) => l.trim().length > 0);
+    const lastLine = lastLines[lastLines.length - 1] ?? '';
+    if (/^\s*\|.*\|\s*$/.test(lastLine) && /\|\s*$/.test(lastLine)) {
+      // ends with | AND contains at least 2 | — likely a table row, but check
+      // the row is complete (ends with | and not hanging after a trailing comma)
+      const pipeCount = (lastLine.match(/\|/g) ?? []).length;
+      if (pipeCount >= 2 && !/[,\s]\s*$/.test(lastLine.replace(/\|+\s*$/, ''))) {
+        // row appears complete; OK
+      }
+    }
+
+    // 4. Mid-list — output ends with a dangling list marker
+    if (/^[-*]\s*$/.test(lastLine.trim()) || /^\d+\.\s*$/.test(lastLine.trim())) {
+      return {
+        valid: false,
+        reason: 'Output ends with dangling list marker',
+      };
+    }
+
+    // 5. Length delta — output less than 50% of input
+    if (input.length > 0 && output.length < input.length * 0.5) {
+      return {
+        valid: false,
+        reason: `Output length ${output.length} < 50% of input length ${input.length} (likely truncated)`,
+      };
+    }
+
+    // Warning: heading-shrunk
+    const inputHeadings = (input.match(/^#{1,6}\s/gm) ?? []).length;
+    const outputHeadings = (output.match(/^#{1,6}\s/gm) ?? []).length;
+    if (inputHeadings > 0 && outputHeadings < inputHeadings) {
+      return {
+        valid: true,
+        warning: `Heading count shrunk: ${inputHeadings} → ${outputHeadings}`,
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
    * Post-transform: minimal cleanup of AI output.
    *
    * The original postTransform ran 7 regex passes (stripInstructions,

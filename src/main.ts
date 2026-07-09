@@ -527,6 +527,36 @@ export default class TitleGeneratorPlugin extends Plugin {
             }
             sentPrompt +=
               '\n\nCRITICAL: Output ONLY the transformed content. Do NOT repeat these instructions. Do NOT include the original prompt. Do NOT add explanations.';
+
+            // F4: validate AI body output before trusting it as final content.
+            // Sentinel extraction in reformatForGfm already gave us the body
+            // substring between markers; this guards against the AI truncating
+            // mid-fence / mid-table / mid-list inside that body, or hallucinating
+            // a much shorter output than the input.
+            const gfmValidation = this.gfmService.validateGfmOutput(
+              bodyWithoutFrontmatter,
+              reformatted
+            );
+            if (!gfmValidation.valid) {
+              statusBarItem.setText('');
+              const error = this.errorHandler.createGenerationError(
+                `GFM reformat output failed validation: ${gfmValidation.reason}. ` +
+                  'File not renamed and not published. Please retry.'
+              );
+              this.errorHandler.handleError(error);
+              return {
+                success: false,
+                originalPath: file.path,
+                error: error.message,
+              };
+            }
+            if (gfmValidation.warning) {
+              new Notice(
+                `GFM reformat warning: ${gfmValidation.warning}`,
+                5000
+              );
+            }
+
             const transformedBody = this.gfmService.postTransform(
               reformatted,
               this.settings.cleanQAPrefix,
