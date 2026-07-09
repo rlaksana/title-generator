@@ -478,6 +478,7 @@ export default class TitleGeneratorPlugin extends Plugin {
           this.validationService.sanitizeFilename(newTitle);
 
         let finalContent = content;
+        let snapPathForNotice: string | undefined;
         const { frontmatter, body: bodyWithoutFrontmatter } =
           this.splitFrontmatter(content);
 
@@ -588,13 +589,13 @@ export default class TitleGeneratorPlugin extends Plugin {
             // Recovery path: rename <basename>.bak.<ts> back to <basename>.md
             // if the AI rewrite corrupted content. .bak files have no .md
             // suffix so Obsidian does not index them.
-            const snapPath = await this.snapshotBeforeModify(file, content);
+            snapPathForNotice = await this.snapshotBeforeModify(file, content);
             await this.app.vault.modify(
               this.app.vault.getAbstractFileByPath(candidatePath) as TFile,
               finalContent
             );
-            if (snapPath) {
-              this.logger.info(`Recovery snapshot written: ${snapPath}`);
+            if (snapPathForNotice) {
+              this.logger.info(`Recovery snapshot written: ${snapPathForNotice}`);
             }
           }
 
@@ -678,7 +679,13 @@ export default class TitleGeneratorPlugin extends Plugin {
           noticeParts.push(`Title: "${sanitizedTitle}"`);
           if (didGfmReformat) noticeParts.push('GFM reformatted');
           if (gistUrlForNotice) noticeParts.push('shared to Gist');
-          new Notice(`${noticeParts.join(' • ')} — copied to clipboard!`);
+          let noticeSuffix = ' — copied to clipboard!';
+          if (snapPathForNotice) {
+            // Show only the basename, not the full vault-relative path
+            const snapName = snapPathForNotice.split('/').pop() ?? snapPathForNotice;
+            noticeSuffix += ` Recovery snapshot: ${snapName}`;
+          }
+          new Notice(`${noticeParts.join(' • ')}${noticeSuffix}`, 5000);
           this.logger.info(`File renamed: ${file.path} → ${candidatePath}`);
           return {
             success: true,
@@ -689,10 +696,10 @@ export default class TitleGeneratorPlugin extends Plugin {
           // Update content even if filename didn't change
           if (finalContent !== content) {
             // F5: same snapshot for the in-place modify path.
-            const snapPath = await this.snapshotBeforeModify(file, content);
+            snapPathForNotice = await this.snapshotBeforeModify(file, content);
             await this.app.vault.modify(file, finalContent);
-            if (snapPath) {
-              this.logger.info(`Recovery snapshot written: ${snapPath}`);
+            if (snapPathForNotice) {
+              this.logger.info(`Recovery snapshot written: ${snapPathForNotice}`);
             }
           }
 
