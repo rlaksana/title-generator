@@ -70,6 +70,9 @@ class OpenAIStrategy implements AIProviderStrategy {
     };
 
     if (isReasoningModel) {
+      // Reasoning models (o1/o3/gpt-5) reject `max_tokens`; they use the
+      // `max_completion_tokens` parameter instead.
+      body.max_completion_tokens = settings.maxOutputTokens;
       // Handle reasoning_effort for GPT-5 models
       if (model.includes('gpt-5')) {
         // gpt-5-mini supports low, medium, high reasoning effort.
@@ -81,6 +84,7 @@ class OpenAIStrategy implements AIProviderStrategy {
         // Note: temperature is typically unsupported/ignored for these models
       }
     } else {
+      body.max_tokens = settings.maxOutputTokens;
       body.temperature = settings.temperature;
     }
 
@@ -123,7 +127,7 @@ class AnthropicStrategy implements AIProviderStrategy {
     const body: any = {
       model: model,
       messages: [{ role: 'user', content: fullPrompt }],
-      max_tokens: 8192,
+      max_tokens: settings.maxOutputTokens,
     };
 
     if (isReasoningModel && settings.anthropicThinkingEnabled) {
@@ -169,6 +173,7 @@ class GoogleStrategy implements AIProviderStrategy {
 
     const generationConfig: any = {
       temperature: settings.temperature,
+      maxOutputTokens: settings.maxOutputTokens,
     };
 
     // Detection for Gemini 2.0+ thinking models (including gemini-3)
@@ -227,7 +232,7 @@ class KimiStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.kimiModel,
       messages: [{ role: 'user', content: fullPrompt }],
-      max_tokens: 8192,
+      max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
 
@@ -264,7 +269,7 @@ class MiniMaxStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.minimaxModel,
       messages: [{ role: 'user', content: fullPrompt }],
-      max_tokens: 8192,
+      max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
 
@@ -300,6 +305,7 @@ class OpenRouterStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.openRouterModel,
       messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
 
@@ -344,6 +350,7 @@ class LiteLLMStrategy implements AIProviderStrategy {
     const body: any = {
       model: settings.litellmModel,
       messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
 

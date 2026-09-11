@@ -327,6 +327,7 @@ export interface TitleGeneratorSettings {
   temperature: number;
   maxTitleLength: number;
   maxContentLength: number;
+  maxOutputTokens: number;
   refinePrompt: string;
 
   // GFM Reformatting Settings

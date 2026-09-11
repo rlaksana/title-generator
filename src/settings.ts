@@ -107,6 +107,7 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   temperature: 0.3,
   maxTitleLength: 60,
   maxContentLength: 2000,
+  maxOutputTokens: 8192,
 
   // GFM Reformatting Settings
   enableGfmReformatting: false,
@@ -287,6 +288,24 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
             const parsed = parseInt(value, 10);
             if (!isNaN(parsed)) {
               this.plugin.settings.maxContentLength = parsed;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Max Output Tokens')
+      .setDesc(
+        'Maximum number of tokens the AI may generate per call. Applies to every provider.'
+      )
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text
+          .setValue(this.plugin.settings.maxOutputTokens.toString())
+          .onChange(async (value) => {
+            const parsed = parseInt(value, 10);
+            if (!isNaN(parsed)) {
+              this.plugin.settings.maxOutputTokens = parsed;
               await this.plugin.saveSettings();
             }
           });

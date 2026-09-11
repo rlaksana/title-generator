@@ -484,13 +484,13 @@ export default class TitleGeneratorPlugin extends Plugin {
 
         // Reformat body to GFM if enabled (or forced by command)
         if (this.settings.enableGfmReformatting || options?.forceGfm) {
-          // Token pre-check: skip AI reformat for very long bodies to avoid
-          // mid-response truncation. 24000 chars ≈ 6000 tokens input, leaves
-          // ~2000 tokens for output within typical 8192-token budget.
-          const REFORMAT_SKIP_THRESHOLD = 24000;
-          if (bodyWithoutFrontmatter.length > REFORMAT_SKIP_THRESHOLD) {
+          // Input cap is SSOT with the title path: the same maxContentLength
+          // setting decides how much content may be sent to the AI. Longer
+          // bodies skip reformat (the response would be truncated mid-stream)
+          // and the file is saved with raw content instead.
+          if (bodyWithoutFrontmatter.length > this.settings.maxContentLength) {
             new Notice(
-              `Body too long for AI GFM reformat (${bodyWithoutFrontmatter.length} > ${REFORMAT_SKIP_THRESHOLD} chars). Skipping reformat — file saved with raw content.`,
+              `Body too long for AI GFM reformat (${bodyWithoutFrontmatter.length} > ${this.settings.maxContentLength} chars). Skipping reformat — file saved with raw content.`,
               8000
             );
           } else {

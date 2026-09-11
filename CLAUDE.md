@@ -51,7 +51,7 @@ Any new command that calls AI to rewrite note body MUST follow this 3-layer patt
 2. **Structural validation** (5 guards in `gfmService.validateGfmOutput`)
    - Fail-closed: sentinel leak / fence parity (odd ``` count) / mid-list (dangling `- ` marker) / length delta (< 50% of input) / empty output.
    - Warn-only: heading-shrunk (AI legitimately merges headings).
-   - Token pre-check at 24000 char (≈ 6000 tokens): skip AI entirely, use raw body.
+   - Token pre-check: skip AI entirely when body exceeds `maxContentLength` (SSOT with the title-generation input cap), use raw body. Output budget per call comes from the `maxOutputTokens` setting (all providers).
 
 3. **Snapshot recovery** (`main.ts.snapshotBeforeModify`)
    - Writes `<basename>.bak.<ISO-timestamp>` BEFORE `vault.modify`. NO `.md` suffix on `.bak` file so Obsidian does not index it.
