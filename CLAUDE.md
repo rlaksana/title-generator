@@ -2,6 +2,7 @@
 
 ## Build & Quality
 - `npm run build` — TypeScript check + esbuild (runs `tsc --noEmit --skipLibCheck`)
+- `npm run dev` — esbuild watch mode (rebuilds `dist/` on `src/` change, inline sourcemaps). Reload the plugin from Obsidian after each rebuild.
 - `npm run lint` — BROKEN (ESLint v10 config mismatch); do NOT use
 - ESLint uses old `.eslintrc` format incompatible with installed ESLint 10; linting unavailable until migrated
 - `node test-gfm-tables.test.js` — regression for the GFM table-separator fix (4 cases). Self-contained: esbuild + VM, no build artifacts, no `obsidian` import.
