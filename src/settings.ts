@@ -875,7 +875,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     if (s.enableGistAutoShare) {
       const warn = card.createDiv('fs-warn');
-      warn.createSpan({ cls: 'fs-warn-icon', text: ICONS.warn });
+      // icons are static SVG constants — textContent would escape the markup
+      warn.createSpan({ cls: 'fs-warn-icon' }).innerHTML = ICONS.warn;
       warn.createSpan({
         text: 'Secret Gist tidak muncul di pencarian, tetapi siapa pun yang memegang tautannya bisa membukanya.',
       });
