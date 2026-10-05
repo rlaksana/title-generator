@@ -265,7 +265,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     for (const tab of TABS) {
       const btn = tabsEl.createEl('button', { cls: 'fs-tab' });
       if (tab.id === this.activeTab) btn.addClass('active');
-      btn.createSpan({ text: tab.icon });
+      // icons are static SVG constants — textContent would escape the markup
+      btn.createSpan().innerHTML = tab.icon;
       btn.createSpan({ text: tab.label });
       btn.addEventListener('click', () => {
         this.activeTab = tab.id;
@@ -279,7 +280,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     // Footer
     const footer = root.createDiv('fs-footer');
-    footer.createSpan({ cls: 'fs-check', text: ICONS.check });
+    footer.createSpan({ cls: 'fs-check' }).innerHTML = ICONS.check;
     footer.createSpan({ text: 'Perubahan tersimpan otomatis.' });
   }
 
