@@ -22,13 +22,14 @@
 - **GFM fence state machine**: `gfmService.transformCodeBlocks` and `gfmService.transformLinks` track `inFence` / `fenceMarker` so existing fenced blocks (opening `\`\`\`` or `~~~` lines) are passed through verbatim. Indented-code → fenced conversion and URL wrapping only run OUTSIDE fences. Inline code spans (balanced backticks) are skipped by URL transform too.
 - **GFM table-separator state machine**: `gfmService.transformTables` tracks `inTable` across lines so a separator row is emitted exactly once per table (after the header), not after every pipe-row. Body rows pass through verbatim. Treat this state-machine as the canonical pattern for any per-row transform that risks double-emission.
 - **GFM fail-closed**: When `enableGfmReformatting` or `forceGfm` is set and `aiService.reformatForGfm()` returns empty/throws, `processSingleFile` short-circuits with an error notice — no rename, no Gist publish, no silent fallback to raw content. This is the contract for the "Paste & Share to Gist" command path.
-- **Settings**: `DEFAULT_SETTINGS` constant + `TitleGeneratorSettingTab` class; add to both when adding settings
+- **Settings**: `DEFAULT_SETTINGS` constant + `TitleGeneratorSettings` interface + a row in the matching tab renderer in `TitleGeneratorSettingTab` (`src/settings.ts`). Add to all three when adding a setting.
+- **Settings UI (Forge redesign)**: `TitleGeneratorSettingTab` builds custom DOM via `section`/`row`/`rowBlock` + `mk*` builders (not Obsidian `Setting`), styled by `FORGE_CSS` (scoped `.forge-settings`, fixed dark palette — does not follow light theme) with 4 tabs (Provider/Prompt/Output/Gist, `activeTab` field). Labels are Indonesian per the approved design. Inputs auto-save on change; switches that toggle dependent rows call `this.display()`.
 - **File operations**: Return `FileOperationResult` interface
 - **New service pattern**: Create `xxxService.ts` following `gfmService.ts` — separate concerns, testable
-- **Settings pattern**: Add to `DEFAULT_SETTINGS` (constant values) + `TitleGeneratorSettings` interface (types) + `TitleGeneratorSettingTab` class (UI)
+- **Settings pattern**: Add to `DEFAULT_SETTINGS` (constant values) + `TitleGeneratorSettings` interface (types) + a row via the `mk*` builders in the matching tab renderer of `TitleGeneratorSettingTab` (UI)
 - **API key prompt**: Missing keys trigger `ApiKeyPromptModal` popup (defined in `main.ts`, not in settings)
 - **External trigger**: `pasteAndShareToGist()` (in `main.ts`) is the shared entry point for the command, its in-app default hotkey (`Ctrl+Win+G`), and the `obsidian://title-generator-paste-gist` protocol handler — external launchers (e.g. global AutoHotkey hotkey) bind to that URI for OS-level hotkeys, which Obsidian's plugin API cannot register.
-- **Toggle pattern**: Call `this.display()` in onChange to re-render settings tab
+- **Toggle pattern**: Switches that show/hide dependent rows (provider, Gist auto-share, Anthropic thinking) call `this.display()` in onChange; independent switches just save
 
 ## Frontmatter Handling
 There are TWO parsers and they are not interchangeable:
