@@ -85,7 +85,9 @@ jobs:
           git commit -m "chore: bump version to $RELEASE_VERSION [skip ci]" || echo "No changes to commit"
           # Another push may have landed while this run was building — rebase
           # the version-bump commit on top of latest main before pushing.
-          git pull --rebase origin main
+          # --autostash: the build step regenerates dist/main.js, leaving
+          # unstaged changes that would otherwise block the rebase.
+          git pull --rebase --autostash origin main
           git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
