@@ -294,9 +294,27 @@ export default class TitleGeneratorPlugin extends Plugin {
     this.register(() => styleEl.remove());
   }
 
+  // Single-flight guard: keyboard auto-repeat or a double-fired obsidian://
+  // URI can invoke this twice within a second; overlapping runs race on
+  // getActiveFile() and leave one pasted note unprocessed.
+  private pasteGistInFlight = false;
+
   // Entry point shared by the command, its in-app default hotkey, and the
   // obsidian://title-generator-paste-gist protocol handler (global hotkey path)
   private async pasteAndShareToGist(): Promise<void> {
+    if (this.pasteGistInFlight) {
+      new Notice('Paste & Share to Gist is already running.');
+      return;
+    }
+    this.pasteGistInFlight = true;
+    try {
+      await this.pasteAndShareToGistInner();
+    } finally {
+      this.pasteGistInFlight = false;
+    }
+  }
+
+  private async pasteAndShareToGistInner(): Promise<void> {
     try {
       // Check for required keys (needs Gist)
       const ready = await this.checkAndPromptForKeys(true);
