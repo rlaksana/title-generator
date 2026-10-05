@@ -27,6 +27,7 @@
 - **New service pattern**: Create `xxxService.ts` following `gfmService.ts` — separate concerns, testable
 - **Settings pattern**: Add to `DEFAULT_SETTINGS` (constant values) + `TitleGeneratorSettings` interface (types) + `TitleGeneratorSettingTab` class (UI)
 - **API key prompt**: Missing keys trigger `ApiKeyPromptModal` popup (defined in `main.ts`, not in settings)
+- **External trigger**: `pasteAndShareToGist()` (in `main.ts`) is the shared entry point for the command, its in-app default hotkey (`Ctrl+Win+G`), and the `obsidian://title-generator-paste-gist` protocol handler — external launchers (e.g. global AutoHotkey hotkey) bind to that URI for OS-level hotkeys, which Obsidian's plugin API cannot register.
 - **Toggle pattern**: Call `this.display()` in onChange to re-render settings tab
 
 ## Frontmatter Handling

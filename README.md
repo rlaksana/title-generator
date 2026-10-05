@@ -8,7 +8,7 @@ A completely rewritten Obsidian plugin to generate note titles using multiple AI
 
 - **Three Workflow Commands**:
   - **Rename title & (optional) Gist share** — Generate title for current note, optionally publish to Gist
-  - **Paste & Share to Gist** — Read clipboard, create new note, generate title, reformat to GFM, publish to GitHub Gist
+  - **Paste & Share to Gist** — Read clipboard, create new note, generate title, reformat to GFM, publish to GitHub Gist. Also triggerable externally via `obsidian://title-generator-paste-gist` (default in-app hotkey: `Ctrl+Win+G`; a global OS hotkey can bind any tool — e.g. AutoHotkey — to that URI).
   - **Paste to new note** — Read clipboard, create new note, generate title (no GFM/Gist)
 - **Dynamic Model Loading with Search**: Automatically detects and loads available models from your configured AI providers
 - **GFM Reformatting**: Transform AI-generated content into clean GitHub Flavored Markdown (task lists, tables, fenced code blocks, strikethrough)

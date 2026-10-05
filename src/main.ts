@@ -82,62 +82,11 @@ export default class TitleGeneratorPlugin extends Plugin {
       this.addCommand({
         id: 'paste-and-share-to-gist',
         name: 'Paste & Share to Gist',
-        callback: async () => {
-          try {
-            // Check for required keys (needs Gist)
-            const ready = await this.checkAndPromptForKeys(true);
-            if (!ready) return;
-
-            const clipboardText = await navigator.clipboard.readText();
-            if (!clipboardText.trim()) {
-              new Notice('Clipboard is empty.');
-              return;
-            }
-            // Check if current tab is empty (no MarkdownView = "No file is open")
-            // If empty, reuse the tab. If not empty, create a new tab.
-            const activeView =
-              this.app.workspace.getActiveViewOfType(MarkdownView);
-            let leaf: WorkspaceLeaf;
-            if (!activeView) {
-              // Empty tab - use the current leaf
-              leaf = this.app.workspace.getLeaf(false)!;
-            } else {
-              // Has content - create a new tab
-              leaf = this.app.workspace.getLeaf('tab');
-            }
-            // Create a new untitled note and open it in the leaf
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filename = `Paste-${timestamp}.md`;
-            const newFile = await this.app.vault.create(filename, '');
-            await leaf.openFile(newFile);
-            // Wait for the file to be available
-            let activeFile: TFile | null = null;
-            let attempts = 0;
-            while (attempts < 20) {
-              activeFile = this.app.workspace.getActiveFile();
-              if (activeFile) break;
-              await new Promise((resolve) => setTimeout(resolve, 100));
-              attempts++;
-            }
-            if (!activeFile) {
-              new Notice('Failed to create new note.');
-              return;
-            }
-            // Replace content with clipboard
-            if (leaf.view) {
-              const editor = (leaf.view as any).editor as Editor | null;
-              if (editor) editor.replaceSelection(clipboardText);
-            }
-            await this.processSingleFile(activeFile, clipboardText, {
-              forceGfm: true,
-              forceGist: true,
-            });
-          } catch (error) {
-            new Notice(
-              `Failed to paste and share: ${(error as Error).message}`
-            );
-          }
-        },
+        // Mod=Ctrl, Meta=Win on Windows — in-app fallback; the global
+        // Ctrl+Win+G path goes through the obsidian:// protocol handler below
+        // (AHK intercepts the keystroke before Obsidian sees it when running).
+        hotkeys: [{ modifiers: ['Mod', 'Meta'], key: 'G' }],
+        callback: () => this.pasteAndShareToGist(),
       });
 
       this.addCommand({
@@ -252,6 +201,13 @@ export default class TitleGeneratorPlugin extends Plugin {
 
       this.addSettingTab(new TitleGeneratorSettingTab(this.app, this));
 
+      // External trigger entry point (e.g. global OS hotkey via AutoHotkey):
+      // obsidian://title-generator-paste-gist
+      this.registerObsidianProtocolHandler(
+        'title-generator-paste-gist',
+        () => this.pasteAndShareToGist()
+      );
+
       // Register vault delete event to auto-delete corresponding Gist
       this.registerEvent(
         this.app.vault.on('delete', async (file) => {
@@ -336,6 +292,62 @@ export default class TitleGeneratorPlugin extends Plugin {
     styleEl.innerHTML = css;
     document.head.appendChild(styleEl);
     this.register(() => styleEl.remove());
+  }
+
+  // Entry point shared by the command, its in-app default hotkey, and the
+  // obsidian://title-generator-paste-gist protocol handler (global hotkey path)
+  private async pasteAndShareToGist(): Promise<void> {
+    try {
+      // Check for required keys (needs Gist)
+      const ready = await this.checkAndPromptForKeys(true);
+      if (!ready) return;
+
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText.trim()) {
+        new Notice('Clipboard is empty.');
+        return;
+      }
+      // Check if current tab is empty (no MarkdownView = "No file is open")
+      // If empty, reuse the tab. If not empty, create a new tab.
+      const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+      let leaf: WorkspaceLeaf;
+      if (!activeView) {
+        // Empty tab - use the current leaf
+        leaf = this.app.workspace.getLeaf(false)!;
+      } else {
+        // Has content - create a new tab
+        leaf = this.app.workspace.getLeaf('tab');
+      }
+      // Create a new untitled note and open it in the leaf
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `Paste-${timestamp}.md`;
+      const newFile = await this.app.vault.create(filename, '');
+      await leaf.openFile(newFile);
+      // Wait for the file to be available
+      let activeFile: TFile | null = null;
+      let attempts = 0;
+      while (attempts < 20) {
+        activeFile = this.app.workspace.getActiveFile();
+        if (activeFile) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        attempts++;
+      }
+      if (!activeFile) {
+        new Notice('Failed to create new note.');
+        return;
+      }
+      // Replace content with clipboard
+      if (leaf.view) {
+        const editor = (leaf.view as any).editor as Editor | null;
+        if (editor) editor.replaceSelection(clipboardText);
+      }
+      await this.processSingleFile(activeFile, clipboardText, {
+        forceGfm: true,
+        forceGist: true,
+      });
+    } catch (error) {
+      new Notice(`Failed to paste and share: ${(error as Error).message}`);
+    }
   }
 
   async loadSettings() {
