@@ -191,8 +191,8 @@ const FORGE_CSS = `
 .forge-settings .fs-row-block { padding: 14px 0; border-top: 1px solid #303030; }
 .forge-settings .fs-name { font-size: 14px; color: #e8e8e8; font-weight: 500; }
 .forge-settings .fs-desc { font-size: 12.5px; color: #a3a3a3; margin-top: 3px; line-height: 1.45; }
-.forge-settings .fs-ctl { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.forge-settings .fs-input, .forge-settings .fs-select { height: 32px; box-sizing: border-box; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; color: #e8e8e8; font-size: 13px; padding: 0 10px; font-family: inherit; }
+.forge-settings .fs-ctl { display: flex; align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0; }
+.forge-settings .fs-input, .forge-settings .fs-select { height: 32px; box-sizing: border-box; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; color: #e8e8e8; font-size: 13px; padding: 0 10px; font-family: inherit; min-width: 0; }
 .forge-settings .fs-mono { font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace; }
 .forge-settings textarea.fs-textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 10px; min-height: 112px; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; color: #e8e8e8; font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace; font-size: 12.5px; line-height: 1.55; padding: 10px 12px; resize: vertical; }
 .forge-settings .fs-switch { position: relative; width: 40px; height: 22px; border-radius: 11px; background: #3d3d3d; border: 0; padding: 0; cursor: pointer; flex: 0 0 auto; }
@@ -209,7 +209,7 @@ const FORGE_CSS = `
 .forge-settings .fs-val { font-size: 13px; color: #e8e8e8; width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
 .forge-settings .fs-num { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
 .forge-settings .fs-unit { font-size: 12.5px; color: #a3a3a3; width: 52px; }
-.forge-settings .model-search-container { width: 230px; flex: 0 0 auto; position: relative; }
+.forge-settings .model-search-container { width: 230px; flex: 0 1 auto; min-width: 0; position: relative; }
 .forge-settings .model-search-container input { height: 32px; box-sizing: border-box; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; color: #e8e8e8; font-size: 13px; padding: 0 10px; font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace; width: 100%; }
 `;
 
