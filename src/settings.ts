@@ -239,7 +239,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     header.createDiv({ cls: 'fs-title', text: 'Forge' });
     header.createDiv({
       cls: 'fs-sub',
-      text: 'Buat judul catatan otomatis dengan AI.',
+      text: 'Generate note titles automatically with AI.',
     });
 
     // Tab bar
@@ -281,7 +281,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     // Footer
     const footer = root.createDiv('fs-footer');
     footer.createSpan({ cls: 'fs-check' }).innerHTML = ICONS.check;
-    footer.createSpan({ text: 'Perubahan tersimpan otomatis.' });
+    footer.createSpan({ text: 'Changes are saved automatically.' });
   }
 
   /* ---------- shared builders ---------- */
@@ -381,7 +381,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
   private mkEye(ctl: HTMLElement, input: HTMLInputElement): void {
     const btn = ctl.createEl('button', { cls: 'fs-icon-btn' });
-    btn.setAttribute('aria-label', 'Tampilkan atau sembunyikan');
+    btn.setAttribute('aria-label', 'Show or hide');
     btn.innerHTML = ICONS.eye;
     btn.addEventListener('click', () => {
       input.type = input.type === 'password' ? 'text' : 'password';
@@ -443,7 +443,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     chipRow.style.marginTop = '10px';
     chipRow.createSpan({
       cls: 'fs-desc',
-      text: 'Sisipkan di kursor:',
+      text: 'Insert at cursor:',
     });
     for (const v of vars) {
       const chip = chipRow.createEl('button', { cls: 'fs-chip', text: v });
@@ -471,11 +471,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     // --- Layanan AI ---
     const card = this.section(
       container,
-      'Layanan AI',
-      'Dipakai untuk membuat judul catatan.'
+      'AI Service',
+      'Used to generate note titles.'
     );
 
-    const providerRow = this.row(card, 'Provider', 'Layanan AI yang membuat judul.');
+    const providerRow = this.row(card, 'Provider', 'The AI service that generates titles.');
     this.mkSelect(
       providerRow.ctl,
       170,
@@ -500,7 +500,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const keyRow = this.row(
         card,
         'API key',
-        'Disimpan di data.json plugin, tidak terenkripsi.'
+        'Stored in the plugin data.json, unencrypted.'
       );
       const keyInput = this.mkInput(keyRow.ctl, {
         width: 230,
@@ -521,7 +521,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const modelRow = this.row(
         card,
         'Model',
-        'Model LiteLLM (mis. ollama/llama3, bedrock/anthropic.claude-v3, gpt-4o).'
+        'LiteLLM model (e.g. ollama/llama3, bedrock/anthropic.claude-v3, gpt-4o).'
       );
       this.mkInput(modelRow.ctl, {
         width: 230,
@@ -535,11 +535,11 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       });
     } else {
       const cachedInfo = this.modelService.getCachedInfo(provider);
-      let desc = 'Model yang dipakai untuk membuat judul.';
+      let desc = 'The model used to generate titles.';
       if (cachedInfo?.error) {
-        desc += ` Gagal memuat: ${cachedInfo.error}`;
+        desc += ` Failed to load: ${cachedInfo.error}`;
       } else if (cachedInfo && cachedInfo.models.length > 0) {
-        desc = `${cachedInfo.models.length} model tersedia · diperbarui ${this.getTimeAgo(new Date(cachedInfo.lastUpdated))}.`;
+        desc = `${cachedInfo.models.length} models available · updated ${this.getTimeAgo(new Date(cachedInfo.lastUpdated))}.`;
       }
       const modelRow = this.row(card, 'Model', desc);
       const searchWrap = modelRow.ctl.createDiv('model-search-container');
@@ -547,7 +547,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const refreshBtn = this.mkIconBtn(
         modelRow.ctl,
         ICONS.refresh,
-        'Muat ulang daftar model',
+        'Reload model list',
         async () => {
           refreshBtn.style.opacity = '0.5';
           try {
@@ -564,13 +564,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     if (provider === 'google') {
       const thinkRow = this.row(
         card,
-        'Tingkat berpikir',
-        'Lebih tinggi = judul lebih akurat, tetapi lebih lambat dan mahal. Hanya untuk Gemini 3.'
+        'Thinking level',
+        'Higher = more accurate titles, but slower and more expensive. Gemini 3 only.'
       );
       this.mkSelect(
         thinkRow.ctl,
         130,
-        { OFF: 'Mati', LOW: 'Rendah', MEDIUM: 'Sedang', HIGH: 'Tinggi' },
+        { OFF: 'Off', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' },
         s.googleThinkingLevel,
         async (value) => {
           s.googleThinkingLevel = value as 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
@@ -583,7 +583,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const thinkRow = this.row(
         card,
         'Extended thinking',
-        'Aktifkan reasoning untuk model Claude 4.5+.'
+        'Enable reasoning for Claude 4.5+ models.'
       );
       this.mkSwitch(
         thinkRow.ctl,
@@ -599,7 +599,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
         const budgetRow = this.row(
           card,
           'Thinking budget',
-          'Maksimum token untuk reasoning.'
+          'Maximum tokens for reasoning.'
         );
         this.mkNumericInput(budgetRow.ctl, s.anthropicThinkingBudget, async (v) => {
           s.anthropicThinkingBudget = v;
@@ -609,7 +609,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const urlRow = this.row(
         card,
         'Custom API URL',
-        'Ganti base URL Anthropic (mis. untuk proxy). Kosongkan untuk default.'
+        'Override the Anthropic base URL (e.g. for a proxy). Leave empty for the default.'
       );
       this.mkInput(urlRow.ctl, {
         width: 230,
@@ -627,7 +627,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const reasonRow = this.row(
         card,
         'Reasoning',
-        'Aktifkan reasoning untuk model OpenRouter yang mendukung.'
+        'Enable reasoning for OpenRouter models that support it.'
       );
       this.mkSwitch(
         reasonRow.ctl,
@@ -644,7 +644,7 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const urlRow = this.row(
         card,
         'LiteLLM Base URL',
-        'Base URL server LiteLLM. Trailing slash dihapus otomatis.'
+        'LiteLLM server base URL. Trailing slashes are removed automatically.'
       );
       this.mkInput(urlRow.ctl, {
         width: 230,
@@ -659,14 +659,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       const keyRow = this.row(
         card,
         'LiteLLM API key',
-        'Opsional. Kosongkan untuk server lokal tanpa autentikasi.'
+        'Optional. Leave empty for local servers without authentication.'
       );
       const keyInput = this.mkInput(keyRow.ctl, {
         width: 230,
         value: s.litellmApiKey,
         password: true,
         mono: true,
-        placeholder: 'Opsional',
+        placeholder: 'Optional',
         onChange: async (v) => {
           s.litellmApiKey = v;
           await this.save();
@@ -676,12 +676,12 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     }
 
     // --- Parameter generasi ---
-    const paramCard = this.section(container, 'Parameter generasi');
+    const paramCard = this.section(container, 'Generation parameters');
 
     const tempRow = this.row(
       paramCard,
       'Temperature',
-      'Rendah = konsisten, tinggi = lebih kreatif.'
+      'Low = consistent, high = more creative.'
     );
     const valSpan = tempRow.ctl.createSpan({ cls: 'fs-val' });
     valSpan.textContent = s.temperature.toFixed(2);
@@ -708,30 +708,30 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     const titleLenRow = this.row(
       paramCard,
-      'Panjang judul maksimum',
-      'Batas karakter judul hasil.'
+      'Maximum title length',
+      'Character limit for generated titles.'
     );
     this.mkNumericInput(titleLenRow.ctl, s.maxTitleLength, async (v) => {
       s.maxTitleLength = v;
       await this.save();
     });
-    titleLenRow.ctl.createSpan({ cls: 'fs-unit', text: 'karakter' });
+    titleLenRow.ctl.createSpan({ cls: 'fs-unit', text: 'chars' });
 
     const contentLenRow = this.row(
       paramCard,
-      'Panjang isi catatan maksimum',
-      'Catatan lebih panjang dipotong sebelum dikirim, menghemat biaya.'
+      'Maximum note content length',
+      'Longer notes are truncated before being sent to save cost.'
     );
     this.mkNumericInput(contentLenRow.ctl, s.maxContentLength, async (v) => {
       s.maxContentLength = v;
       await this.save();
     });
-    contentLenRow.ctl.createSpan({ cls: 'fs-unit', text: 'karakter' });
+    contentLenRow.ctl.createSpan({ cls: 'fs-unit', text: 'chars' });
 
     const tokenRow = this.row(
       paramCard,
-      'Token output maksimum',
-      'Berlaku untuk semua provider.'
+      'Maximum output tokens',
+      'Applies to all providers.'
     );
     this.mkNumericInput(tokenRow.ctl, s.maxOutputTokens, async (v) => {
       s.maxOutputTokens = v;
@@ -746,13 +746,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const card = this.section(
       container,
       'Prompt',
-      'Teks yang dikirim ke AI. Variabel diganti otomatis saat judul dibuat.'
+      'Text sent to the AI. Variables are replaced automatically when titles are generated.'
     );
 
     const initialBlock = this.rowBlock(
       card,
-      'Prompt awal',
-      'Dipakai pertama kali. Gunakan {max_length} untuk batas panjang judul.'
+      'Initial prompt',
+      'Used on the first pass. Use {max_length} for the title length limit.'
     );
     const initialTa = this.mkTextarea(initialBlock, s.customPrompt, async (v) => {
       s.customPrompt = v;
@@ -762,8 +762,8 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     const refineBlock = this.rowBlock(
       card,
-      'Prompt perbaikan',
-      'Dipakai saat judul melebihi batas. Gunakan {max_length} dan {title}.'
+      'Refinement prompt',
+      'Used when a title exceeds the limit. Use {max_length} and {title}.'
     );
     const refineTa = this.mkTextarea(refineBlock, s.refinePrompt, async (v) => {
       s.refinePrompt = v;
@@ -775,26 +775,26 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
   private renderOutputTab(container: HTMLElement): void {
     const s = this.plugin.settings;
 
-    const fileCard = this.section(container, 'Nama file');
+    const fileCard = this.section(container, 'File name');
 
     const lowerRow = this.row(
       fileCard,
-      'Judul huruf kecil',
-      'Ubah semua judul hasil menjadi huruf kecil.'
+      'Lowercase titles',
+      'Convert all generated titles to lowercase.'
     );
-    this.mkSwitch(lowerRow.ctl, 'Judul huruf kecil', s.lowerCaseTitles, async (v) => {
+    this.mkSwitch(lowerRow.ctl, 'Lowercase titles', s.lowerCaseTitles, async (v) => {
       s.lowerCaseTitles = v;
       await this.save();
     });
 
     const forbiddenRow = this.row(
       fileCard,
-      'Hapus karakter terlarang',
-      'Karakter yang tidak valid di nama file dihapus.'
+      'Remove forbidden characters',
+      'Characters that are invalid in file names are removed.'
     );
     this.mkSwitch(
       forbiddenRow.ctl,
-      'Hapus karakter terlarang',
+      'Remove forbidden characters',
       s.removeForbiddenChars,
       async (v) => {
         s.removeForbiddenChars = v;
@@ -804,48 +804,48 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
     const gfmCard = this.section(
       container,
-      'Format isi',
-      'Pembersihan otomatis saat judul dibuat.'
+      'Content formatting',
+      'Automatic cleanup when titles are generated.'
     );
 
     const gfmRow = this.row(
       gfmCard,
-      'Ubah isi ke GFM',
-      'Format ulang seluruh isi catatan menjadi GitHub Flavored Markdown.'
+      'Convert content to GFM',
+      'Reformat the entire note body into GitHub Flavored Markdown.'
     );
-    this.mkSwitch(gfmRow.ctl, 'Ubah isi ke GFM', s.enableGfmReformatting, async (v) => {
+    this.mkSwitch(gfmRow.ctl, 'Convert content to GFM', s.enableGfmReformatting, async (v) => {
       s.enableGfmReformatting = v;
       await this.save();
     });
 
     const citeRow = this.row(
       gfmCard,
-      'Hapus penanda sitasi',
-      'Hapus [1], ^[2]^ dan sejenisnya. Berguna untuk hasil riset AI.'
+      'Strip citation markers',
+      'Removes [1], ^[2]^ and the like. Useful for AI research output.'
     );
-    this.mkSwitch(citeRow.ctl, 'Hapus penanda sitasi', s.stripCitations, async (v) => {
+    this.mkSwitch(citeRow.ctl, 'Strip citation markers', s.stripCitations, async (v) => {
       s.stripCitations = v;
       await this.save();
     });
 
     const qaRow = this.row(
       gfmCard,
-      'Hapus awalan Q&A',
-      'Hapus \u201cQ:\u201d atau \u201cQuestion:\u201d. Berguna untuk hasil Perplexity.'
+      'Strip Q&A prefix',
+      'Removes \u201cQ:\u201d or \u201cQuestion:\u201d. Useful for Perplexity output.'
     );
-    this.mkSwitch(qaRow.ctl, 'Hapus awalan Q&A', s.cleanQAPrefix, async (v) => {
+    this.mkSwitch(qaRow.ctl, 'Strip Q&A prefix', s.cleanQAPrefix, async (v) => {
       s.cleanQAPrefix = v;
       await this.save();
     });
 
-    const diagCard = this.section(container, 'Diagnostik');
+    const diagCard = this.section(container, 'Diagnostics');
 
     const debugRow = this.row(
       diagCard,
-      'Mode debug',
-      'Tulis log rinci ke konsol untuk pemecahan masalah.'
+      'Debug mode',
+      'Write verbose logs to the console for troubleshooting.'
     );
-    this.mkSwitch(debugRow.ctl, 'Mode debug', s.debugMode, async (v) => {
+    this.mkSwitch(debugRow.ctl, 'Debug mode', s.debugMode, async (v) => {
       s.debugMode = v;
       await this.save();
       updateLoggerConfig({ debugMode: v });
@@ -855,16 +855,16 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
   private renderGistTab(container: HTMLElement): void {
     const s = this.plugin.settings;
 
-    const card = this.section(container, 'Bagikan ke Gist');
+    const card = this.section(container, 'Share to Gist');
 
     const autoRow = this.row(
       card,
-      'Bagikan otomatis',
-      'Setelah judul dibuat, catatan langsung dipublikasikan sebagai secret Gist.'
+      'Auto-share',
+      'After the title is generated, the note is published immediately as a secret Gist.'
     );
     this.mkSwitch(
       autoRow.ctl,
-      'Bagikan otomatis',
+      'Auto-share',
       s.enableGistAutoShare,
       async (v) => {
         s.enableGistAutoShare = v;
@@ -878,13 +878,13 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       // icons are static SVG constants — textContent would escape the markup
       warn.createSpan({ cls: 'fs-warn-icon' }).innerHTML = ICONS.warn;
       warn.createSpan({
-        text: 'Secret Gist tidak muncul di pencarian, tetapi siapa pun yang memegang tautannya bisa membukanya.',
+        text: 'Secret Gists do not appear in search, but anyone who has the link can open them.',
       });
 
       const patRow = this.row(
         card,
         'GitHub personal access token',
-        'Perlu izin \u201cgist\u201d. Buat di github.com/settings/tokens.'
+        'Requires the \u201cgist\u201d permission. Create one at github.com/settings/tokens.'
       );
       const patInput = this.mkInput(patRow.ctl, {
         width: 230,
@@ -1053,14 +1053,14 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
 
-    if (diffMins < 1) return 'baru saja';
-    if (diffMins < 60) return `${diffMins} menit lalu`;
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
 
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} jam lalu`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} hari lalu`;
+    return `${diffDays} days ago`;
   }
 
   private hasValidConfiguration(provider: AIProvider): boolean {
