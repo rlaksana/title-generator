@@ -144,8 +144,12 @@ export class GfmService {
    *     and extracts body substring between them (deterministic boundary)
    *   - validateGfmOutput() guards against truncation / mid-fence / mid-table
    *
-   * This method now only collapses 3+ blank lines to 2. The second/third
-   * arguments are kept for backward compatibility with callers but ignored.
+   * This method now only does two deterministic things:
+   *   1. stripCitationChips — removes ChatGPT citation chips (favicon image
+   *      link + source name + "+N" lines) that survive the AI reformat.
+   *   2. Collapses 3+ blank lines to 2.
+   * The second/third arguments are kept for backward compatibility with
+   * callers but ignored.
    *
    * @param content - body returned by AI (already sentinel-extracted)
    * @param _cleanQAPrefix - deprecated, ignored
@@ -156,7 +160,82 @@ export class GfmService {
     _cleanQAPrefix: boolean = true,
     _sentPrompt?: string
   ): string {
-    return content.replace(/\n{3,}/g, '\n\n');
+    return this.stripCitationChips(content).replace(/\n{3,}/g, '\n\n');
+  }
+
+  /**
+   * Remove ChatGPT citation "chips" that render as junk in Obsidian:
+   *
+   *   [image](https://www.google.com/s2/favicons?domain=example.com&sz=32)
+   *
+   *   Example Site Name
+   *
+   *   +2
+   *
+   * The favicon link is the anchor: a line that is ONLY a link (or image)
+   * whose URL points at Google's favicon service — machine-generated, never
+   * human-written, so the false-positive surface is near zero. The source
+   * name and "+N" lines are consumed only while they immediately follow the
+   * anchor, under narrow heuristics (short plain text without terminal
+   * punctuation for the name, /^\+\d+$/ for "+N"), so an anchor-less "+2" or
+   * a prose paragraph is never touched. Fenced blocks pass through verbatim
+   * (inFence / fenceMarker state machine, same pattern as the other
+   * per-line transforms).
+   */
+  private stripCitationChips(content: string): string {
+    const lines = content.split('\n');
+    const result: string[] = [];
+    let inFence = false;
+    let fenceMarker = '';
+
+    const isFaviconLink = (l: string) =>
+      /^\s*!?\[image\]\(\s*https?:\/\/(?:www\.)?google\.com\/s2\/favicons[^)]*\)\s*$/i.test(
+        l
+      );
+    const isPlusN = (l: string) => /^\s*\+\d+\s*$/.test(l);
+    const isNameCandidate = (l: string) => {
+      const t = l.trim();
+      if (!t || isPlusN(l)) return false;
+      // Markdown structural lines are never source names.
+      if (/^(#{1,6}\s|>\s?|\||[-*+]\s|\d+\.\s|!?\[|`{3,})/.test(t)) return false;
+      // A source name is short and has no terminal sentence punctuation, so
+      // a prose paragraph after an orphan favicon link survives.
+      return t.length <= 80 && !/[.!?:;,]$/.test(t);
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const fence = line.match(/^\s*(`{3,}|~{3,})/);
+
+      if (inFence) {
+        if (fence && fence[1][0] === fenceMarker[0]) inFence = false;
+        result.push(line);
+        continue;
+      }
+      if (fence) {
+        inFence = true;
+        fenceMarker = fence[1];
+        result.push(line);
+        continue;
+      }
+      if (!isFaviconLink(line)) {
+        result.push(line);
+        continue;
+      }
+
+      // Chip anchor found: drop it, then consume an optional source-name
+      // line and/or "+N" line (blank runs between them are skipped; leftover
+      // blank runs are collapsed by postTransform).
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      if (j < lines.length && isNameCandidate(lines[j])) {
+        i = j;
+        j++;
+        while (j < lines.length && lines[j].trim() === '') j++;
+      }
+      if (j < lines.length && isPlusN(lines[j])) i = j;
+    }
+    return result.join('\n');
   }
 
   /**

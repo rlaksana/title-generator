@@ -130,6 +130,79 @@ function check(name, condition, detail) {
   );
 }
 
+// 6. ChatGPT citation chip (favicon link + source name + "+N") is removed.
+{
+  const input = 'Untuk opsi 1–3, dasarnya PP 46/2015.\n\n[image](https://www.google.com/s2/favicons?domain=https://www.bpjsketenagakerjaan.go.id\\&sz=32)\n\nBPJS Ketenagakerjaan\n\n+2\n\nOpsi 5 tersedia melalui menu Dana Siaga.';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform strips citation chip (favicon + name + "+N")',
+    !out.includes('favicons') &&
+      !out.includes('BPJS Ketenagakerjaan') &&
+      !out.includes('+2') &&
+      out.includes('Untuk opsi 1–3') &&
+      out.includes('Opsi 5 tersedia'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 7. Chip without "+N" (favicon + name only) is removed too.
+{
+  const input = 'Prose satu.\n\n[image](https://www.google.com/s2/favicons?domain=example.com&sz=32)\n\nExample Site\n\nProse dua.';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform strips chip without "+N"',
+    !out.includes('favicons') && !out.includes('Example Site') &&
+      out.includes('Prose satu.') && out.includes('Prose dua.'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 8. Legit non-favicon image link is preserved.
+{
+  const input = 'Lihat [image](https://example.com/logo.png) dan ![foto](https://cdn.example.com/a.jpg).';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform preserves non-favicon image links',
+    out.includes('https://example.com/logo.png') &&
+      out.includes('![foto](https://cdn.example.com/a.jpg)'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 9. Favicon chip inside a code fence passes through verbatim.
+{
+  const input = 'Contoh:\n\n```\n[image](https://www.google.com/s2/favicons?domain=example.com&sz=32)\nBPJS Ketenagakerjaan\n```\n';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform preserves favicon chip inside code fence',
+    out.includes('favicons') && out.includes('BPJS Ketenagakerjaan'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 10. Anchor-less "+2" line is preserved (only chip-following "+N" is removed).
+{
+  const input = 'Skor hasil:\n\n+2\n\npoin untuk tim kedua.';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform preserves "+2" line without a chip before it',
+    out.includes('+2'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 11. Prose with terminal punctuation after an orphan favicon link survives
+//     (the source-name heuristic must not eat a paragraph).
+{
+  const input = '[image](https://www.google.com/s2/favicons?domain=example.com&sz=32)\n\nKlaim sebagian hanya bisa dilakukan satu kali sesuai ketentuan.';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform keeps prose paragraph after orphan favicon link',
+    out.includes('Klaim sebagian hanya bisa dilakukan satu kali sesuai ketentuan.'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
 // ---------------------------------------------------------------------------
 // F4: validateGfmOutput guards
 // ---------------------------------------------------------------------------
