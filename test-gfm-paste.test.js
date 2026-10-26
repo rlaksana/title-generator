@@ -203,6 +203,47 @@ function check(name, condition, detail) {
   );
 }
 
+// 12. utm_* tracking params are stripped from markdown link URLs (real
+//     ChatGPT case: ?utm_source=chatgpt.com), link text preserved.
+{
+  const input = 'Dasar hukum utama: [Klaim JHT BPJS Ketenagakerjaan](https://www.bpjsketenagakerjaan.go.id/cara-klaim.html?utm_source=chatgpt.com).';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform strips utm_source from markdown link URL',
+    out.includes('(https://www.bpjsketenagakerjaan.go.id/cara-klaim.html)') &&
+      !out.includes('utm_source'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 13. Mid-chain utm params: non-utm params preserved, "?&"/"&"-without-"?"
+//     separators repaired.
+{
+  const input = 'Lihat https://example.com/a?id=3&utm_medium=ref&utm_source=x dan https://example.com/b?utm_campaign=c&utm_term=t&id=7 hari ini.';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform strips mid-chain utm params and repairs separators',
+    out.includes('https://example.com/a?id=3 ') &&
+      out.includes('https://example.com/b?id=7 ') &&
+      !out.includes('utm_'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
+// 14. URLs without utm, prose "utm_" words, and utm URLs inside code fences
+//     all pass through untouched.
+{
+  const input = 'Kata utm_source di prose bukan URL. Lihat https://example.com/plain?x=1.\n\n```\ncurl https://example.com/api?utm_source=ci\n```\n';
+  const out = gfm.postTransform(input);
+  check(
+    'postTransform keeps non-utm URLs, prose utm_ words, and fenced utm URLs',
+    out.includes('Kata utm_source di prose bukan URL') &&
+      out.includes('https://example.com/plain?x=1') &&
+      out.includes('https://example.com/api?utm_source=ci'),
+    `got: ${JSON.stringify(out)}`
+  );
+}
+
 // ---------------------------------------------------------------------------
 // F4: validateGfmOutput guards
 // ---------------------------------------------------------------------------

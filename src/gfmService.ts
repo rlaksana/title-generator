@@ -144,10 +144,11 @@ export class GfmService {
    *     and extracts body substring between them (deterministic boundary)
    *   - validateGfmOutput() guards against truncation / mid-fence / mid-table
    *
-   * This method now only does two deterministic things:
+   * This method now only does three deterministic things:
    *   1. stripCitationChips — removes ChatGPT citation chips (favicon image
    *      link + source name + "+N" lines) that survive the AI reformat.
-   *   2. Collapses 3+ blank lines to 2.
+   *   2. stripUtmParams — removes utm_* tracking parameters from URLs.
+   *   3. Collapses 3+ blank lines to 2.
    * The second/third arguments are kept for backward compatibility with
    * callers but ignored.
    *
@@ -160,7 +161,10 @@ export class GfmService {
     _cleanQAPrefix: boolean = true,
     _sentPrompt?: string
   ): string {
-    return this.stripCitationChips(content).replace(/\n{3,}/g, '\n\n');
+    return this.stripUtmParams(this.stripCitationChips(content)).replace(
+      /\n{3,}/g,
+      '\n\n'
+    );
   }
 
   /**
@@ -234,6 +238,56 @@ export class GfmService {
         while (j < lines.length && lines[j].trim() === '') j++;
       }
       if (j < lines.length && isPlusN(lines[j])) i = j;
+    }
+    return result.join('\n');
+  }
+
+  /**
+   * Strip utm_* tracking parameters from http(s) URLs (e.g. ChatGPT appends
+   * ?utm_source=chatgpt.com to links it cites). Only URLs that actually
+   * contain a utm parameter are rewritten; every other URL — and every
+   * non-URL occurrence of the word "utm_" — passes through byte-identical.
+   * Dangling separators are repaired: "?&a=1" -> "?a=1", a left-over "&a=1"
+   * when the ?-param was utm becomes "?a=1", and a bare trailing "?"/"&" is
+   * dropped. Fenced blocks pass through verbatim (inFence / fenceMarker
+   * state machine, same pattern as the other per-line transforms).
+   */
+  private stripUtmParams(content: string): string {
+    const URL_RE = /https?:\/\/[^\s<>()\[\]]+/gi;
+    const UTM_PARAM_RE = /[?&]utm_[a-z0-9_]+=[^&#]*/gi;
+    const lines = content.split('\n');
+    const result: string[] = [];
+    let inFence = false;
+    let fenceMarker = '';
+
+    for (const line of lines) {
+      const fence = line.match(/^\s*(`{3,}|~{3,})/);
+      if (inFence) {
+        if (fence && fence[1][0] === fenceMarker[0]) inFence = false;
+        result.push(line);
+        continue;
+      }
+      if (fence) {
+        inFence = true;
+        fenceMarker = fence[1];
+        result.push(line);
+        continue;
+      }
+      if (!line.includes('utm_')) {
+        result.push(line);
+        continue;
+      }
+      result.push(
+        line.replace(URL_RE, (url) => {
+          if (!/[?&]utm_[a-z0-9_]+=/i.test(url)) return url;
+          let cleaned = url.replace(UTM_PARAM_RE, '');
+          cleaned = cleaned.replace(/\?&/, '?');
+          // "?-param was utm" case: first remaining param must take the ?
+          if (!cleaned.includes('?')) cleaned = cleaned.replace(/&/, '?');
+          cleaned = cleaned.replace(/[?&]$/, '');
+          return cleaned;
+        })
+      );
     }
     return result.join('\n');
   }
