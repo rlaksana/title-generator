@@ -87,7 +87,7 @@ Reference: `docs/superpowers/specs/2026-07-09-paste-content-preservation-D-plus-
 | `src/types.ts` | TypeScript interfaces |
 
 ## Obsidian Plugin Patterns
-- Commands: `addCommand({ id, name, editorCallback })`
+- Commands: `addCommand({ id, name, callback | editorCallback })` — commands needing the `Editor` param use `editorCallback`; file-level commands that only read `getActiveFile()` MUST use plain `callback` — an `editorCallback`-gated command is silently unavailable (no notice, no log) outside an active editor, e.g. in Reading view (Copy Gist Link bug, fixed 2026-10-29)
 - File menu: `registerEvent(app.workspace.on('file-menu', ...))`
 - Batch menu: `registerEvent(app.workspace.on('files-menu', ...))`
 - Settings tab: Extend `PluginSettingTab`, call `display()` to re-render
