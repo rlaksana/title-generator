@@ -69,7 +69,10 @@ export default class TitleGeneratorPlugin extends Plugin {
       this.addCommand({
         id: 'copy-title-gist-link',
         name: 'Copy Gist Link',
-        editorCallback: (editor: Editor) => {
+        // callback, not editorCallback: the command reads the file via
+        // getActiveFile() and must also work in Reading view, where
+        // editorCallback-gated commands silently do nothing.
+        callback: () => {
           const file = this.app.workspace.getActiveFile();
           if (!file) {
             new Notice('No active file found.');
