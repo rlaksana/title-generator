@@ -160,6 +160,13 @@ export class ValidationService {
           );
         }
         break;
+      case 'zai':
+        if (!trimmedName.includes('glm')) {
+          result.warnings.push(
+            'Z.AI models typically contain "glm" in the name'
+          );
+        }
+        break;
     }
 
     return result;
@@ -542,6 +549,7 @@ export class ValidationService {
 
       case 'anthropic':
       case 'kimi':
+      case 'zai':
         if (
           !response.content ||
           !Array.isArray(response.content) ||
@@ -590,6 +598,8 @@ export class ValidationService {
         return 'googleApiKey';
       case 'kimi':
         return 'kimiApiKey';
+      case 'zai':
+        return 'zaiApiKey';
       default:
         throw new TitleGeneratorError(
           `Unknown provider: ${provider}`,
@@ -612,6 +622,8 @@ export class ValidationService {
         return 'googleModel';
       case 'kimi':
         return 'kimiModel';
+      case 'zai':
+        return 'zaiModel';
       default:
         throw new TitleGeneratorError(
           `Unknown provider: ${provider}`,

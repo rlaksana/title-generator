@@ -61,8 +61,8 @@ class OpenAIStrategy implements AIProviderStrategy {
     const fullPrompt = `${prompt}\n\n${content}`.trim();
     const model = settings.openAiModel;
 
-    // Detection for reasoning models (o1, o3, gpt-5)
-    const isReasoningModel = model.startsWith('o') || model.includes('gpt-5');
+    // Detection for reasoning models (o1/o3/o4-series, gpt-5)
+    const isReasoningModel = /^o\d/.test(model) || model.includes('gpt-5');
 
     const body: any = {
       model: model,
@@ -131,10 +131,16 @@ class AnthropicStrategy implements AIProviderStrategy {
     };
 
     if (isReasoningModel && settings.anthropicThinkingEnabled) {
-      body.thinking = {
-        type: 'enabled',
-        budget_tokens: settings.anthropicThinkingBudget,
-      };
+      // Claude 4.6+ uses adaptive thinking; the legacy explicit budget form
+      // is for older thinking models (3.7, 4.5).
+      if (model.includes('4-6') || model.includes('4-7')) {
+        body.thinking = { type: 'adaptive' };
+      } else {
+        body.thinking = {
+          type: 'enabled',
+          budget_tokens: settings.anthropicThinkingBudget,
+        };
+      }
       body.temperature = 1.0;
     } else {
       body.temperature = settings.temperature;
@@ -292,6 +298,43 @@ class MiniMaxStrategy implements AIProviderStrategy {
 }
 
 /**
+ * Z.AI GLM Strategy Implementation
+ * Z.AI exposes an Anthropic-compatible endpoint for the GLM Coding Plan.
+ */
+class ZAIStrategy implements AIProviderStrategy {
+  buildRequest(
+    prompt: string,
+    content: string,
+    settings: TitleGeneratorSettings
+  ): ApiRequestConfig {
+    const fullPrompt = `${prompt}\n\n${content}`.trim();
+
+    const body: any = {
+      model: settings.zaiModel,
+      messages: [{ role: 'user', content: fullPrompt }],
+      max_tokens: settings.maxOutputTokens,
+      temperature: settings.temperature,
+    };
+
+    return {
+      url: 'https://api.z.ai/api/anthropic/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.zaiApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  parseResponse(response: AnthropicResponse): string {
+    const textContent = response.content.find((c: any) => c.type === 'text');
+    return textContent?.text?.trim() ?? '';
+  }
+}
+
+/**
  * OpenRouter Strategy Implementation
  */
 class OpenRouterStrategy implements AIProviderStrategy {
@@ -392,6 +435,7 @@ export class AIService {
       kimi: new KimiStrategy(),
       litellm: new LiteLLMStrategy(),
       minimax: new MiniMaxStrategy(),
+      zai: new ZAIStrategy(),
     };
   }
 
@@ -569,6 +613,11 @@ export class AIService {
         key: settings.minimaxApiKey,
         model: settings.minimaxModel,
         name: 'MiniMax',
+      },
+      zai: {
+        key: settings.zaiApiKey,
+        model: settings.zaiModel,
+        name: 'Z.AI GLM',
       },
     };
 

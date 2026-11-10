@@ -83,6 +83,8 @@ export class ModelService {
         return this.queryKimiModels(settings);
       case 'minimax':
         return this.queryMinimaxModels(settings);
+      case 'zai':
+        return this.queryZaiModels(settings);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -117,11 +119,7 @@ export class ModelService {
 
     return data.data
       .filter(
-        (model: any) =>
-          model.id &&
-          (model.id.includes('gpt') ||
-            model.id.startsWith('o1') ||
-            model.id.startsWith('o3'))
+        (model: any) => model.id && (model.id.includes('gpt') || /^o\d/.test(model.id))
       )
       .map((model: any) => model.id)
       .sort();
@@ -248,6 +246,35 @@ export class ModelService {
 
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error('Invalid response format from MiniMax API');
+    }
+
+    return data.data.map((model: any) => model.id).sort();
+  }
+
+  private async queryZaiModels(
+    settings: TitleGeneratorSettings
+  ): Promise<string[]> {
+    if (!settings.zaiApiKey.trim()) {
+      throw new Error('Z.AI API key not set');
+    }
+
+    const response = await requestUrl({
+      url: 'https://api.z.ai/api/anthropic/v1/models',
+      method: 'GET',
+      headers: {
+        'x-api-key': settings.zaiApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`Z.AI API error (${response.status}): ${response.text}`);
+    }
+
+    const data = response.json;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error('Invalid response format from Z.AI API');
     }
 
     return data.data.map((model: any) => model.id).sort();

@@ -1169,7 +1169,8 @@ export default class TitleGeneratorPlugin extends Plugin {
       !this.settings.googleApiKey &&
       !this.settings.openRouterApiKey &&
       !this.settings.kimiApiKey &&
-      !this.settings.minimaxApiKey;
+      !this.settings.minimaxApiKey &&
+      !this.settings.zaiApiKey;
     const gistMissing = needsGist && !this.settings.githubPat;
 
     if (!aiKeyMissing && !gistMissing) {
@@ -1191,7 +1192,8 @@ export default class TitleGeneratorPlugin extends Plugin {
               this.settings.googleApiKey ||
               this.settings.openRouterApiKey ||
               this.settings.kimiApiKey ||
-              this.settings.minimaxApiKey;
+              this.settings.minimaxApiKey ||
+              this.settings.zaiApiKey;
             const gistOkNow = !needsGist || !!this.settings.githubPat;
             resolve(!!aiKeyNow && gistOkNow);
           } else {
@@ -1241,6 +1243,7 @@ class ApiKeyPromptModal extends Modal {
           .addOption('openrouter', 'OpenRouter')
           .addOption('kimi', 'Kimi')
           .addOption('minimax', 'MiniMax')
+          .addOption('zai', 'Z.AI GLM')
           .setValue(this.plugin.settings.aiProvider)
           .onChange((value) => {
             this.plugin.settings.aiProvider = value as any;
@@ -1316,13 +1319,26 @@ class ApiKeyPromptModal extends Modal {
     // MiniMax API Key
     const minimaxSetting = new Setting(contentEl)
       .setName('MiniMax API Key')
-      .setDesc('Required for MiniMax models')
+      .setDesc('Token/M Plan Subscription Key')
       .addText((text) => {
         text.inputEl.type = 'password';
         text.inputEl.placeholder = 'sk-...';
         text.setValue(this.plugin.settings.minimaxApiKey);
         text.onChange((value) => {
           this.plugin.settings.minimaxApiKey = value;
+        });
+      });
+
+    // Z.AI GLM API Key
+    const zaiSetting = new Setting(contentEl)
+      .setName('Z.AI GLM API Key')
+      .setDesc('GLM Coding Plan key')
+      .addText((text) => {
+        text.inputEl.type = 'password';
+        text.inputEl.placeholder = 'sk-...';
+        text.setValue(this.plugin.settings.zaiApiKey);
+        text.onChange((value) => {
+          this.plugin.settings.zaiApiKey = value;
         });
       });
 
@@ -1356,6 +1372,7 @@ class ApiKeyPromptModal extends Modal {
       kimiSetting.settingEl.style.display = provider === 'kimi' ? '' : 'none';
       minimaxSetting.settingEl.style.display =
         provider === 'minimax' ? '' : 'none';
+      zaiSetting.settingEl.style.display = provider === 'zai' ? '' : 'none';
     };
     this.updateInputVisibility();
 
@@ -1379,7 +1396,8 @@ class ApiKeyPromptModal extends Modal {
             this.plugin.settings.googleApiKey ||
             this.plugin.settings.openRouterApiKey ||
             this.plugin.settings.kimiApiKey ||
-            this.plugin.settings.minimaxApiKey
+            this.plugin.settings.minimaxApiKey ||
+            this.plugin.settings.zaiApiKey
           );
           if (!hasAiKey) {
             new Notice('Please enter at least one AI API key');

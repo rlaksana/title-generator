@@ -5,7 +5,7 @@
 /**
  * Defines the available AI providers.
  */
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi' | 'litellm' | 'minimax';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'openrouter' | 'kimi' | 'litellm' | 'minimax' | 'zai';
 
 /**
  * Provider configuration interface
@@ -303,6 +303,10 @@ export interface TitleGeneratorSettings {
   // MiniMax Settings
   minimaxApiKey: string;
   minimaxModel: string;
+
+  // Z.AI GLM Settings
+  zaiApiKey: string;
+  zaiModel: string;
 
   // Google Thinking Settings
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
