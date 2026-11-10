@@ -221,6 +221,12 @@ const FORGE_CSS = `
 .forge-settings .fs-unit { font-size: 12.5px; color: #a3a3a3; width: 52px; }
 .forge-settings .model-search-container { width: 230px; flex: 0 1 auto; min-width: 0; position: relative; }
 .forge-settings .model-search-container input { height: 32px; box-sizing: border-box; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; color: #e8e8e8; font-size: 13px; padding: 0 10px; font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace; width: 100%; }
+/* Model dropdown: explicit styles so themes cannot truncate model names with ellipsis */
+.forge-settings .search-results { position: absolute; top: 36px; left: 0; min-width: 100%; width: max-content; max-width: 320px; max-height: 240px; overflow-y: auto; background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); z-index: 100; }
+.forge-settings .search-result-item { padding: 6px 10px; font-size: 12.5px; font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace; color: #e8e8e8; cursor: pointer; white-space: normal; word-break: break-all; }
+.forge-settings .search-result-item:hover { background: #2c2c2c; }
+.forge-settings .search-result-item.is-selected { background: #2c2440; color: #d6ccff; }
+.forge-settings .search-results div:not(.search-result-item) { padding: 6px 10px; font-size: 12.5px; color: #a3a3a3; }
 `;
 
 export class TitleGeneratorSettingTab extends PluginSettingTab {
