@@ -6,41 +6,6 @@
 export const PLUGIN_NAME = 'Forge';
 export const PLUGIN_ID = 'title-generator';
 
-// API Configuration
-export const API_CONFIG = {
-  TIMEOUT: 30000, // 30 seconds
-  MAX_RETRIES: 3,
-  RETRY_DELAY: 1000, // 1 second
-
-  // API Endpoints
-  OPENAI: {
-    BASE_URL: 'https://api.openai.com/v1',
-    CHAT_COMPLETIONS: '/chat/completions',
-    MODELS: '/models',
-    HEADERS: {
-      'Content-Type': 'application/json',
-    },
-  },
-
-  ANTHROPIC: {
-    BASE_URL: 'https://api.anthropic.com/v1',
-    MESSAGES: '/messages',
-    MODELS: '/models',
-    VERSION: '2023-06-01',
-    HEADERS: {
-      'Content-Type': 'application/json',
-    },
-  },
-
-  GOOGLE: {
-    BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
-    MODELS: '/models',
-    HEADERS: {
-      'Content-Type': 'application/json',
-    },
-  },
-} as const;
-
 // Model Configuration
 export const MODEL_CONFIG = {
   CACHE_DURATION: 3600000, // 1 hour in milliseconds
@@ -176,68 +141,6 @@ export const FILE_EXTENSIONS = {
   JSON: '.json',
   JAVASCRIPT: '.js',
   TYPESCRIPT: '.ts',
-} as const;
-
-// Provider-specific configurations
-export const PROVIDER_CONFIG = {
-  openai: {
-    name: 'OpenAI',
-    apiKeyField: 'openAiApiKey',
-    modelField: 'openAiModel',
-    requiresApiKey: true,
-    supportsTemperature: true,
-    defaultModels: [
-      'gpt-5.2',
-      'gpt-5.1',
-      'gpt-5',
-      'gpt-5-mini',
-      'gpt-5-chat-latest',
-      'gpt-5.1-chat-latest',
-      'o3-pro',
-      'o3',
-      'o4-mini',
-      'gpt-4.1',
-      'gpt-4o',
-      'gpt-4o-mini',
-    ],
-  },
-  anthropic: {
-    name: 'Anthropic',
-    apiKeyField: 'anthropicApiKey',
-    modelField: 'anthropicModel',
-    requiresApiKey: true,
-    supportsTemperature: true,
-    defaultModels: [
-      'claude-sonnet-4-5',
-      'claude-haiku-4-5',
-      'claude-opus-4-5',
-      'claude-opus-4-1',
-      'claude-sonnet-4-0',
-      'claude-3-7-sonnet-latest',
-    ],
-  },
-  google: {
-    name: 'Google Gemini',
-    apiKeyField: 'googleApiKey',
-    modelField: 'googleModel',
-    requiresApiKey: true,
-    supportsTemperature: true,
-    defaultModels: [
-      'gemini-3-pro-preview',
-      'gemini-3-flash-preview',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-    ],
-  },
-  kimi: {
-    name: 'Kimi',
-    apiKeyField: 'kimiApiKey',
-    modelField: 'kimiModel',
-    requiresApiKey: true,
-    supportsTemperature: true,
-    defaultModels: ['kimi-for-coding'],
-  },
 } as const;
 
 // Regular expressions for cleaning AI responses
