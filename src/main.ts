@@ -382,6 +382,26 @@ export default class TitleGeneratorPlugin extends Plugin {
       delete loadedData.openaiModel;
     }
 
+    // Migrate legacy provider-specific reasoning controls into the unified
+    // effort map. Only fills providers the user has not set yet.
+    const storedEffort = (loadedData as any).effort || {};
+    const effort = { ...DEFAULT_SETTINGS.effort, ...storedEffort };
+
+    if (!storedEffort.google && loadedData.googleThinkingLevel) {
+      effort.google =
+        loadedData.googleThinkingLevel === 'OFF'
+          ? 'default'
+          : String(loadedData.googleThinkingLevel).toLowerCase();
+    }
+    if (
+      !storedEffort.openrouter &&
+      loadedData.openRouterReasoningEnabled === false
+    ) {
+      effort.openrouter = 'none';
+    }
+
+    (loadedData as any).effort = effort;
+
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
   }
 

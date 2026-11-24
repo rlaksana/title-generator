@@ -1,6 +1,17 @@
 import { Notice, requestUrl } from 'obsidian';
-import type { AIProvider, TitleGeneratorSettings, CachedModels } from './types';
+import type {
+  AIProvider,
+  TitleGeneratorSettings,
+  CachedModels,
+  ModelCapabilities,
+} from './types';
 import { normalizeCustomUrl } from './aiService';
+import { CAPABILITIES_VERSION, parseAnthropicCapabilities, parseOpenRouterCapabilities } from './effortService';
+
+interface QueryModelsResult {
+  models: string[];
+  capabilities?: Record<string, ModelCapabilities>;
+}
 
 /**
  * Service for querying and managing AI provider models
@@ -41,9 +52,9 @@ export class ModelService {
     await this.saveSettings();
 
     try {
-      const models = await this.queryModels(provider, config);
-      await this.cacheModels(provider, models);
-      return models;
+      const result = await this.queryModels(provider, config);
+      await this.cacheModels(provider, result);
+      return result.models;
     } catch (error) {
       console.error(`Failed to refresh models for ${provider}:`, error);
       const errorMessage = this.getErrorMessage(error);
@@ -66,7 +77,7 @@ export class ModelService {
   private async queryModels(
     provider: AIProvider,
     config?: Partial<TitleGeneratorSettings>
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     // Use provided config first, then fall back to stored settings
     const settings = { ...this.getSettings(), ...config };
 
@@ -92,7 +103,7 @@ export class ModelService {
 
   private async queryOpenAIModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.openAiApiKey.trim()) {
       throw new Error('OpenAI API key not set');
     }
@@ -117,30 +128,49 @@ export class ModelService {
       throw new Error('Invalid response format from OpenAI API');
     }
 
-    return data.data
-      .filter(
-        (model: any) => model.id && (model.id.includes('gpt') || /^o\d/.test(model.id))
-      )
-      .map((model: any) => model.id)
-      .sort();
+    return {
+      models: data.data
+        .filter(
+          (model: any) =>
+            model.id && (model.id.includes('gpt') || /^o\d/.test(model.id))
+        )
+        .map((model: any) => model.id)
+        .sort(),
+    };
   }
 
   private async queryAnthropicModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.anthropicApiKey.trim()) {
       throw new Error('Anthropic API key not set');
     }
 
     const baseUrl = normalizeCustomUrl(settings.customAnthropicUrl) || 'https://api.anthropic.com';
-    const response = await requestUrl({
-      url: `${baseUrl}/v1/models`,
+    const url = `${baseUrl}/v1/models?limit=1000`;
+    const headers = {
+      'x-api-key': settings.anthropicApiKey,
+    };
+
+    // Capability fields (capabilities.effort/thinking) require a recent
+    // version on the models endpoint. Messages keep 2023-06-01.
+    let capabilitiesSupported = true;
+    let response = await requestUrl({
+      url,
       method: 'GET',
-      headers: {
-        'x-api-key': settings.anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { ...headers, 'anthropic-version': '2026-10-21' },
     });
+
+    // Older proxies may reject the capability-gated version. Fall back to the
+    // long-standing version so model refresh keeps working without levels.
+    if (response.status !== 200) {
+      capabilitiesSupported = false;
+      response = await requestUrl({
+        url,
+        method: 'GET',
+        headers: { ...headers, 'anthropic-version': '2023-06-01' },
+      });
+    }
 
     if (response.status !== 200) {
       throw new Error(
@@ -154,12 +184,17 @@ export class ModelService {
       throw new Error('Invalid response format from Anthropic API');
     }
 
-    return data.data.map((model: any) => model.id).sort();
+    return {
+      models: data.data.map((model: any) => model.id).sort(),
+      capabilities: capabilitiesSupported
+        ? parseAnthropicCapabilities(data.data)
+        : undefined,
+    };
   }
 
   private async queryGoogleModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.googleApiKey.trim()) {
       throw new Error('Google API key not set');
     }
@@ -181,17 +216,30 @@ export class ModelService {
       throw new Error('Invalid response format from Google API');
     }
 
-    return data.models
-      .filter((model: any) =>
-        model.supportedGenerationMethods?.includes('generateContent')
-      )
-      .map((model: any) => model.name.replace('models/', ''))
-      .sort();
+    const capabilities: Record<string, ModelCapabilities> = {};
+    for (const model of data.models) {
+      const id = model.name.replace('models/', '');
+      // Google may omit the flag rather than send false; only store booleans.
+      if (typeof model.thinking === 'boolean') {
+        capabilities[id] = { supportsThinking: model.thinking };
+      }
+    }
+
+    return {
+      models: data.models
+        .filter((model: any) =>
+          model.supportedGenerationMethods?.includes('generateContent')
+        )
+        .map((model: any) => model.name.replace('models/', ''))
+        .sort(),
+      capabilities:
+        Object.keys(capabilities).length > 0 ? capabilities : undefined,
+    };
   }
 
   private async queryKimiModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.kimiApiKey.trim()) {
       throw new Error('Kimi API key not set');
     }
@@ -217,12 +265,14 @@ export class ModelService {
       throw new Error('Invalid response format from Kimi API');
     }
 
-    return data.data.map((model: any) => model.id).sort();
+    return {
+      models: data.data.map((model: any) => model.id).sort(),
+    };
   }
 
   private async queryMinimaxModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.minimaxApiKey.trim()) {
       throw new Error('MiniMax API key not set');
     }
@@ -248,12 +298,14 @@ export class ModelService {
       throw new Error('Invalid response format from MiniMax API');
     }
 
-    return data.data.map((model: any) => model.id).sort();
+    return {
+      models: data.data.map((model: any) => model.id).sort(),
+    };
   }
 
   private async queryZaiModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.zaiApiKey.trim()) {
       throw new Error('Z.AI API key not set');
     }
@@ -277,12 +329,14 @@ export class ModelService {
       throw new Error('Invalid response format from Z.AI API');
     }
 
-    return data.data.map((model: any) => model.id).sort();
+    return {
+      models: data.data.map((model: any) => model.id).sort(),
+    };
   }
 
   private async queryOpenRouterModels(
     settings: TitleGeneratorSettings
-  ): Promise<string[]> {
+  ): Promise<QueryModelsResult> {
     if (!settings.openRouterApiKey.trim()) {
       throw new Error('OpenRouter API key not set');
     }
@@ -307,17 +361,26 @@ export class ModelService {
       throw new Error('Invalid response format from OpenRouter API');
     }
 
-    return data.data.map((model: any) => model.id).sort();
+    return {
+      models: data.data.map((model: any) => model.id).sort(),
+      capabilities: parseOpenRouterCapabilities(data.data),
+    };
   }
 
   private async cacheModels(
     provider: AIProvider,
-    models: string[]
+    result: QueryModelsResult
   ): Promise<void> {
     const settings = this.getSettings();
     settings.cachedModels[provider] = {
-      models,
+      models: result.models,
       lastUpdated: Date.now(),
+      capabilities: result.capabilities,
+      // Stamp only when capability data actually arrived. Stamping an empty
+      // response would suppress the "refresh to detect" hint forever.
+      capabilitiesVersion: result.capabilities
+        ? CAPABILITIES_VERSION
+        : undefined,
     };
     await this.saveSettings();
   }
@@ -329,6 +392,9 @@ export class ModelService {
       models: existing?.models || [],
       lastUpdated: existing?.lastUpdated || 0,
       error,
+      // Preserve capabilities discovered by an earlier successful refresh.
+      capabilities: existing?.capabilities,
+      capabilitiesVersion: existing?.capabilitiesVersion,
     };
     await this.saveSettings();
   }

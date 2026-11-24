@@ -20,12 +20,32 @@ export interface ProviderConfig {
 }
 
 /**
+ * Per-model reasoning capabilities. Populated from a provider API when the
+ * provider exposes one; otherwise the effort resolver falls back to a
+ * version-stamped built-in table.
+ */
+export interface ModelCapabilities {
+  /** Supported effort levels, e.g. ['low','medium','high']; empty = no effort control. */
+  effort?: string[];
+  /** Anthropic thinking modes supported by the model. */
+  thinking?: {
+    adaptive?: boolean;
+    enabled?: boolean;
+    disabled?: boolean;
+  };
+  /** Google models.list `thinking` flag. */
+  supportsThinking?: boolean;
+}
+
+/**
  * Cached model information for a provider
  */
 export interface CachedModels {
   models: string[];
   lastUpdated: number;
   error?: string;
+  capabilities?: Record<string, ModelCapabilities>;
+  capabilitiesVersion?: number;
 }
 
 /**
@@ -308,7 +328,10 @@ export interface TitleGeneratorSettings {
   zaiApiKey: string;
   zaiModel: string;
 
-  // Google Thinking Settings
+  // Unified Reasoning Effort (one value per provider; 'default' = omit)
+  effort: Record<AIProvider, string>;
+
+  // Google Thinking Settings (legacy; migrated into `effort` on load)
   googleThinkingLevel: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
 
   // Anthropic Thinking Settings

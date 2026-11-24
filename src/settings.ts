@@ -3,6 +3,12 @@ import type { AIProvider, TitleGeneratorSettings } from './types';
 import type TitleGeneratorPlugin from './main';
 import { ModelService } from './modelService';
 import { updateLoggerConfig } from './logger';
+import {
+  EFFORT_SOURCE_NOTE,
+  effectiveEffort,
+  effortSelectOptions,
+  resolveEffort,
+} from './effortService';
 
 export const AI_PROVIDERS: Record<
   AIProvider,
@@ -72,7 +78,19 @@ export const DEFAULT_SETTINGS: TitleGeneratorSettings = {
   zaiApiKey: '',
   zaiModel: 'glm-5.3',
 
-  // Google Thinking Settings
+  // Unified Reasoning Effort (one value per provider; 'default' = omit)
+  effort: {
+    openai: 'default',
+    anthropic: 'default',
+    google: 'default',
+    openrouter: 'default',
+    kimi: 'default',
+    litellm: 'default',
+    minimax: 'default',
+    zai: 'default',
+  },
+
+  // Google Thinking Settings (legacy; migrated into `effort` on load)
   googleThinkingLevel: 'OFF',
 
   // Anthropic Thinking Settings
@@ -479,6 +497,32 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
 
   /* ---------- tabs ---------- */
 
+  private getSelectedModel(
+    settings: TitleGeneratorSettings,
+    provider: AIProvider
+  ): string {
+    switch (provider) {
+      case 'openai':
+        return settings.openAiModel;
+      case 'anthropic':
+        return settings.anthropicModel;
+      case 'google':
+        return settings.googleModel;
+      case 'openrouter':
+        return settings.openRouterModel;
+      case 'kimi':
+        return settings.kimiModel;
+      case 'litellm':
+        return settings.litellmModel;
+      case 'minimax':
+        return settings.minimaxModel;
+      case 'zai':
+        return settings.zaiModel;
+      default:
+        return '';
+    }
+  }
+
   private renderProviderTab(container: HTMLElement): void {
     const s = this.plugin.settings;
     const provider = s.aiProvider;
@@ -576,52 +620,43 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
       );
     }
 
-    // Provider-specific rows
-    if (provider === 'google') {
-      const thinkRow = this.row(
+    // Reasoning effort — options are resolved per selected model. API data
+    // is authoritative; otherwise a labelled built-in table is used.
+    const selectedModel = this.getSelectedModel(s, provider);
+    const resolvedEffort = resolveEffort(
+      provider,
+      selectedModel,
+      this.modelService.getCachedInfo(provider)
+    );
+    const effortOptions = effortSelectOptions(resolvedEffort);
+
+    if (effortOptions) {
+      const effortRow = this.row(
         card,
-        'Thinking level',
-        'Higher = more accurate titles, but slower and more expensive. Gemini 3 only.'
+        'Reasoning effort',
+        resolvedEffort.source === 'api'
+          ? 'Detected from the provider API for the selected model.'
+          : provider === 'kimi'
+            ? 'Built-in table (checked 2026-11). Parameter name unverified on this host.'
+            : EFFORT_SOURCE_NOTE
       );
       this.mkSelect(
-        thinkRow.ctl,
+        effortRow.ctl,
         130,
-        { OFF: 'Off', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' },
-        s.googleThinkingLevel,
+        effortOptions,
+        effectiveEffort(resolvedEffort, s.effort?.[provider]),
         async (value) => {
-          s.googleThinkingLevel = value as 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+          if (!s.effort) s.effort = { ...DEFAULT_SETTINGS.effort };
+          s.effort[provider] = value;
           await this.save();
         }
       );
+    } else if (resolvedEffort.note) {
+      this.row(card, 'Reasoning effort', resolvedEffort.note);
     }
 
+    // Provider-specific rows
     if (provider === 'anthropic') {
-      const thinkRow = this.row(
-        card,
-        'Extended thinking',
-        'Enable reasoning for Claude 4.5+ models.'
-      );
-      this.mkSwitch(
-        thinkRow.ctl,
-        'Extended thinking',
-        s.anthropicThinkingEnabled,
-        async (value) => {
-          s.anthropicThinkingEnabled = value;
-          await this.save();
-          this.display();
-        }
-      );
-      if (s.anthropicThinkingEnabled) {
-        const budgetRow = this.row(
-          card,
-          'Thinking budget',
-          'Maximum reasoning tokens. Applies to Claude 3.7/4.5 thinking models (4.6+ uses adaptive thinking).'
-        );
-        this.mkNumericInput(budgetRow.ctl, s.anthropicThinkingBudget, async (v) => {
-          s.anthropicThinkingBudget = v;
-          await this.save();
-        });
-      }
       const urlRow = this.row(
         card,
         'Custom API URL',
@@ -637,23 +672,6 @@ export class TitleGeneratorSettingTab extends PluginSettingTab {
           await this.save();
         },
       });
-    }
-
-    if (provider === 'openrouter') {
-      const reasonRow = this.row(
-        card,
-        'Reasoning',
-        'Enable reasoning for OpenRouter models that support it.'
-      );
-      this.mkSwitch(
-        reasonRow.ctl,
-        'Reasoning',
-        s.openRouterReasoningEnabled,
-        async (value) => {
-          s.openRouterReasoningEnabled = value;
-          await this.save();
-        }
-      );
     }
 
     if (provider === 'litellm') {

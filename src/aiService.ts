@@ -31,6 +31,7 @@ import type {
   AnthropicResponse,
   GoogleResponse,
 } from './types';
+import { buildEffortPayload, resolveThinkingType } from './effortService';
 
 /**
  * Normalize a custom Anthropic base URL: trim whitespace, strip trailing slashes.
@@ -61,8 +62,9 @@ class OpenAIStrategy implements AIProviderStrategy {
     const fullPrompt = `${prompt}\n\n${content}`.trim();
     const model = settings.openAiModel;
 
-    // Detection for reasoning models (o1/o3/o4-series, gpt-5)
-    const isReasoningModel = /^o\d/.test(model) || model.includes('gpt-5');
+    // Detection for reasoning models (o1/o3/o4-series, gpt-5+)
+    const isReasoningModel =
+      /^o\d/.test(model) || model.includes('gpt-5') || model.includes('gpt-6');
 
     const body: any = {
       model: model,
@@ -70,23 +72,23 @@ class OpenAIStrategy implements AIProviderStrategy {
     };
 
     if (isReasoningModel) {
-      // Reasoning models (o1/o3/gpt-5) reject `max_tokens`; they use the
-      // `max_completion_tokens` parameter instead.
+      // Reasoning models reject `max_tokens`; they use
+      // `max_completion_tokens` instead.
       body.max_completion_tokens = settings.maxOutputTokens;
-      // Handle reasoning_effort for GPT-5 models
-      if (model.includes('gpt-5')) {
-        // gpt-5-mini supports low, medium, high reasoning effort.
-        // We map temperature to these levels to give users some control via settings.
-        if (settings.temperature <= 0.3) body.reasoning_effort = 'low';
-        else if (settings.temperature <= 0.7) body.reasoning_effort = 'medium';
-        else body.reasoning_effort = 'high';
-
-        // Note: temperature is typically unsupported/ignored for these models
-      }
     } else {
       body.max_tokens = settings.maxOutputTokens;
       body.temperature = settings.temperature;
     }
+
+    Object.assign(
+      body,
+      buildEffortPayload(
+        'openai',
+        model,
+        settings,
+        settings.cachedModels.openai
+      )
+    );
 
     return {
       url: 'https://api.openai.com/v1/chat/completions',
@@ -116,35 +118,63 @@ class AnthropicStrategy implements AIProviderStrategy {
     const fullPrompt = `${prompt}\n\n${content}`.trim();
     const model = settings.anthropicModel;
 
-    // Detection for Claude reasoning models (3.7, 4.5, 4.6, 4.7)
-    const isReasoningModel =
-      model.includes('3-7') ||
-      model.includes('4-5') ||
-      model.includes('4-6') ||
-      model.includes('4-7') ||
-      model.includes('haiku-4-5');
-
     const body: any = {
       model: model,
       messages: [{ role: 'user', content: fullPrompt }],
       max_tokens: settings.maxOutputTokens,
     };
 
-    if (isReasoningModel && settings.anthropicThinkingEnabled) {
-      // Claude 4.6+ uses adaptive thinking; the legacy explicit budget form
-      // is for older thinking models (3.7, 4.5).
-      if (model.includes('4-6') || model.includes('4-7')) {
+    if (settings.anthropicThinkingEnabled) {
+      const thinkingType = resolveThinkingType(
+        model,
+        settings.cachedModels.anthropic
+      );
+
+      if (thinkingType === 'adaptive') {
         body.thinking = { type: 'adaptive' };
-      } else {
+      } else if (thinkingType === 'enabled') {
         body.thinking = {
           type: 'enabled',
           budget_tokens: settings.anthropicThinkingBudget,
         };
+      } else if (thinkingType === 'legacy') {
+        // No capability data yet (model list never refreshed): keep the
+        // previous model-id heuristic so nothing regresses.
+        const isLegacyThinkingModel =
+          model.includes('3-7') ||
+          model.includes('4-5') ||
+          model.includes('4-6') ||
+          model.includes('4-7') ||
+          model.includes('haiku-4-5');
+
+        if (isLegacyThinkingModel) {
+          if (model.includes('4-6') || model.includes('4-7')) {
+            body.thinking = { type: 'adaptive' };
+          } else {
+            body.thinking = {
+              type: 'enabled',
+              budget_tokens: settings.anthropicThinkingBudget,
+            };
+          }
+        }
       }
+    }
+
+    if (body.thinking) {
       body.temperature = 1.0;
     } else {
       body.temperature = settings.temperature;
     }
+
+    Object.assign(
+      body,
+      buildEffortPayload(
+        'anthropic',
+        model,
+        settings,
+        settings.cachedModels.anthropic
+      )
+    );
 
     return {
       url: `${normalizeCustomUrl(settings.customAnthropicUrl) || 'https://api.anthropic.com'}/v1/messages`,
@@ -182,14 +212,14 @@ class GoogleStrategy implements AIProviderStrategy {
       maxOutputTokens: settings.maxOutputTokens,
     };
 
-    // Detection for Gemini 2.0+ thinking models (including gemini-3)
-    const isThinkingModel =
-      model.includes('thinking') || model.includes('gemini-3');
-
-    if (isThinkingModel && settings.googleThinkingLevel !== 'OFF') {
-      generationConfig.thinkingConfig = {
-        thinkingLevel: settings.googleThinkingLevel,
-      };
+    const effortPayload = buildEffortPayload(
+      'google',
+      model,
+      settings,
+      settings.cachedModels.google
+    );
+    if (effortPayload.thinkingConfig) {
+      generationConfig.thinkingConfig = effortPayload.thinkingConfig;
     }
 
     return {
@@ -242,6 +272,16 @@ class KimiStrategy implements AIProviderStrategy {
       temperature: settings.temperature,
     };
 
+    Object.assign(
+      body,
+      buildEffortPayload(
+        'kimi',
+        settings.kimiModel,
+        settings,
+        settings.cachedModels.kimi
+      )
+    );
+
     return {
       url: 'https://api.kimi.com/coding/v1/messages',
       method: 'POST',
@@ -278,6 +318,16 @@ class MiniMaxStrategy implements AIProviderStrategy {
       max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
+
+    Object.assign(
+      body,
+      buildEffortPayload(
+        'minimax',
+        settings.minimaxModel,
+        settings,
+        settings.cachedModels.minimax
+      )
+    );
 
     return {
       url: 'https://api.minimax.io/anthropic/v1/messages',
@@ -352,7 +402,16 @@ class OpenRouterStrategy implements AIProviderStrategy {
       temperature: settings.temperature,
     };
 
-    if (settings.openRouterReasoningEnabled) {
+    const effortPayload = buildEffortPayload(
+      'openrouter',
+      settings.openRouterModel,
+      settings,
+      settings.cachedModels.openrouter
+    );
+
+    if (effortPayload.reasoning) {
+      body.reasoning = effortPayload.reasoning;
+    } else if (settings.openRouterReasoningEnabled) {
       body.reasoning = { enabled: true };
     }
 
@@ -396,6 +455,16 @@ class LiteLLMStrategy implements AIProviderStrategy {
       max_tokens: settings.maxOutputTokens,
       temperature: settings.temperature,
     };
+
+    Object.assign(
+      body,
+      buildEffortPayload(
+        'litellm',
+        settings.litellmModel,
+        settings,
+        settings.cachedModels.litellm
+      )
+    );
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
